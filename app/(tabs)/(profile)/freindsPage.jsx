@@ -190,7 +190,7 @@ export default function FreindsPage() {
             <View style={styles.topNav}>
                 <Pressable
                     onPress={() => {
-                        router.back()
+                        router.replace("/")
                     }}
                 >
                     <Text style={{ color: colors.textColor, fontSize: 30 }}>←</Text>

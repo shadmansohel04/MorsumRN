@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View, ActivityIndicator, RefreshControl } from "react-native";
-import AvatarComp from "../(comp)/person";
-import { Colors } from "../../constants/Colors";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View, RefreshControl } from "react-native";
+import AvatarComp from "../../(comp)/person";
+import { Colors } from "../../../constants/Colors";
 import Constants from "expo-constants"
 
 const backendURI = Constants.expoConfig.extra.backendURI
@@ -86,8 +86,8 @@ export default function AllChats() {
             console.log(data)
 
             if(data && data.success){
-                router.push({
-                    pathname: "../(comp)/chatPage",
+                router.replace({
+                    pathname: "chatPage",
                     params:{
                         room_ID: data.roomID,
                         otherUserName: username
@@ -175,8 +175,8 @@ export default function AllChats() {
                             key={index} 
                             style={styles.chatItem}
                             onPress={()=>{
-                                router.push({
-                                    pathname: "../(comp)/chatPage",
+                                router.replace({
+                                    pathname: "chatPage",
                                     params:{
                                         room_ID: chat.chatId,
                                         otherUserName: chat.otherUsername

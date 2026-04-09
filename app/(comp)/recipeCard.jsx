@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, Image, StyleSheet, Animated, Pressable, ScrollView } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Pressable, ScrollView } from 'react-native';
 import { BlurView } from 'expo-blur';
 import ingICON from "../../assets/ingredient.png";
 import listICON from "../../assets/to-do-list.png";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 
 const RecipeCard = ({ user }) => {
   const ingBlur = useRef(new Animated.Value(0)).current;
@@ -57,7 +58,11 @@ const RecipeCard = ({ user }) => {
 
   return (
     <View style={styles.card}>
-      <Image source={{ uri: user.imgurl }} style={styles.image} />
+      <Image 
+        source={{ uri: user.imgurl }} 
+        style={styles.image} 
+        cachePolicy={"memory-disk"}  
+      />
       <View style={styles.info}>
         <Text style={styles.name}>{user.recipeName}</Text>
       </View>
@@ -65,7 +70,11 @@ const RecipeCard = ({ user }) => {
       <View style={styles.bottom} />
 
       <Pressable onPress={() => background('ing')} style={[styles.icon, { left: 20 }]}>
-        <Image style={{ width: '100%', height: '100%' }} source={ingICON} />
+        <Image 
+          style={{ width: '100%', height: '100%' }} 
+          source={ingICON}
+          cachePolicy={"memory-disk"}
+        />
       </Pressable>
 
       <Pressable 

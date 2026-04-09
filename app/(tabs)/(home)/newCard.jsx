@@ -1,3 +1,4 @@
+import React from "react";
 import { View, StyleSheet, Dimensions, Text } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -16,7 +17,7 @@ const CARD_WIDTH = wWidth * 0.82;
 const CARD_HEIGHT = wHeight * 0.6;
 const SWIPE_THRESHOLD = 150;
 
-export default function TinderCard({ card, index, cardsLength, onSwipeComplete }) {
+const TinderCard = ({ card, index, cardsLength, onSwipeComplete }) => {
     const x = useSharedValue(0);
     const y = useSharedValue(0);
     const rotation = useSharedValue(0);
@@ -81,6 +82,7 @@ export default function TinderCard({ card, index, cardsLength, onSwipeComplete }
                         contentFit="cover"
                         cachePolicy={"memory-disk"}
                         recyclingKey={String(card?.recipeID ?? card?.__key ?? index)}
+                        placeholder={{ blurhash: "LKO2?U%2Tw=w]~RBVZRi};RPxuwH" }}
                         priority={index === 0 ? "high": "normal"}
                     />
                     <Animated.View style={[styles.overlay, overlayStyle]} />
@@ -89,6 +91,8 @@ export default function TinderCard({ card, index, cardsLength, onSwipeComplete }
         </View>
     );
 }
+
+export default React.memo(TinderCard);
 
 const styles = StyleSheet.create({
     container: {

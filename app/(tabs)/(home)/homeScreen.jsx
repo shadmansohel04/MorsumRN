@@ -1,4 +1,4 @@
-import { View, Pressable, useColorScheme, StyleSheet, Text, ScrollView, Animated, FlatList } from "react-native";
+import { View, Pressable, useColorScheme, StyleSheet, Text, ScrollView, Animated, FlatList, ActivityIndicator } from "react-native";
 import TinderCard from "./newCard";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { DATA } from "../../../constants/sampleData";
@@ -7,7 +7,6 @@ import listICON from "../../../assets/to-do-list.png";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Feather from '@expo/vector-icons/Feather';
 import EvilIcons from '@expo/vector-icons/EvilIcons';
-import axios from "axios";
 import { Colors } from "../../../constants/Colors";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -22,6 +21,8 @@ const FRIENDS_URL = `${backendURI}/user/getFreinds`;
 const RECIPES_URL = `${backendURI}/recipe/returnRecipes`;
 const SWIPEURL = `${backendURI}/recipe/swipeUpdate`;
 const SENDRECIPE = `${backendURI}/user/insertRecipeMessage`;
+const VISIBLE_CARDS = 5;
+const PREFETCH_AHEAD = 6;
 
 const prefetchImages = async (list) =>
   await Promise.all(list.map((x) => (x?.imgurl ? Image.prefetch(x.imgurl) : Promise.resolve())));
@@ -39,6 +40,7 @@ const useKeyFactory = () => {
 export default function HomeScreen() {
   const [cards, setCards] = useState([]);
   const cardsRef = useRef(cards);
+  const [start, setStarting] = useState(true)
 
   const [visibleOverlay, setVisibleOverlay] = useState(null);
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -77,15 +79,17 @@ export default function HomeScreen() {
 
   const seedInitial = useCallback(async (raw) => {
     const initial = withUniqueKeys(raw);
+    const toPrefetch = initial.slice(0, PREFETCH_AHEAD);
+    await prefetchImages(toPrefetch).catch(() => null);
     setCards((prev)=> [...prev, ...initial]);
-    await prefetchImages(initial);
   }, [withUniqueKeys]);
 
   const ingest = useCallback(async (rawList) => {
     const toAdd = withUniqueKeys(rawList);
     if (toAdd.length) {
+      const toPrefetch = toAdd.slice(0, PREFETCH_AHEAD);
+      await prefetchImages(toPrefetch).catch(() => null);
       setCards((prev) => [...prev, ...toAdd]);
-      await prefetchImages(toAdd);
     }
     return toAdd.length;
   }, [withUniqueKeys]);
@@ -102,13 +106,14 @@ export default function HomeScreen() {
     scheduleInactivityCheck();
 
     const current = cardsRef.current;
-    if (current.length > 1 && current[1]?.imgurl) {
-      try {
-        await Image.prefetch(current[1].imgurl);
-      } catch (e) {
-        console.warn("Image prefetch failed", e);
-      }
+    if (current.length > 1) {
+      const ahead = current.slice(1, 1 + PREFETCH_AHEAD); // next few cards
+      Promise.all(
+        ahead.map((c) => (c?.imgurl ? Image.prefetch(c.imgurl).catch(()=>null) : Promise.resolve()))
+      ).catch(()=>null);
     }
+
+
     requestAnimationFrame(() => setCards((prev) => prev.slice(1)));
   }, [scheduleInactivityCheck]);
 
@@ -117,97 +122,134 @@ export default function HomeScreen() {
     cardsRef.current = cards;
   }, [cards]);
 
-    const loadMore = useCallback(async () => {
-      if (isFetchingRef.current || !hasMoreRef.current) return;
-        isFetchingRef.current = true;
-      try {
-        const added = await fetcher(false);
-        if (added === 0) hasMoreRef.current = false;
-      } 
-      finally {
-        isFetchingRef.current = false;
-      }
+  const loadMore = useCallback(async () => {
+    if (isFetchingRef.current || !hasMoreRef.current) return;
+      isFetchingRef.current = true;
+    try {
+      const added = await fetcher(false);
+      if (added === 0) hasMoreRef.current = false;
+    } 
+    finally {
+      isFetchingRef.current = false;
+    }
   }, [fetcher]);
 
+
   const fetcher = useCallback(async (appendFromStorage) => {
+    const CHUNK = 3;
+
+    const readLocal = async () => {
+      const raw = await AsyncStorage.getItem("localPics");
+      return raw ? JSON.parse(raw) : [];
+    };
+    const writeLocal = async (arr) => {
+      await AsyncStorage.setItem("localPics", JSON.stringify(arr));
+    };
+
     try {
       const jwt = await AsyncStorage.getItem("jwt");
-      // AsyncStorage.clear()
-      // throw Error("ASsas")
-      let response
-      if(appendFromStorage){
-        response = await axios.get(RECIPES_URL, { headers: { Authorization: jwt ?? "" } }).catch((err)=>{console.log(err)});
-      }
-      else if (!appendFromStorage && swipes.current.length > 0){
-        const toSend = swipes.current
-        if(toSend.length == 0) return;
-        // console.log(toSend.length)
-        response = await axios.put(SWIPEURL, 
-          { swipes: toSend },
-          { headers: { Authorization: jwt ?? "" }
-        }).catch((err)=>{console.log(err)});
-        swipes.current.length = 0
-        if(swipeSet.current.size > 50){
-          swipeSet.current.clear()
+      let serverRecipes = null;
+
+      if (appendFromStorage) {
+        const local = await readLocal();
+        if (Array.isArray(local) && local.length > 0) {
+          const chunk = local.slice(0, CHUNK);
+          const remainder = local.slice(chunk.length);
+          await writeLocal(remainder);
+          const added = await ingest(chunk);
+          if (added === 0) hasMoreRef.current = false;
+          return added;
         }
       }
-      if(!response || !response.data){
-        return
-      } 
-      const data = response.data
 
-      const recipes = Array.isArray(data?.recipes) ? data.recipes : [];
-      const success = data?.success === true;
+      if (Array.isArray(swipes.current) && swipes.current.length > 0) {
+        try {
+          const toSend = swipes.current;
+          if (toSend.length > 0) {
+            const rawSwipe = await axios.put(
+              SWIPEURL,
+              { swipes: toSend },
+              { headers: { Authorization: jwt ?? "" } }
+            ).catch((e) => {
+              console.log("swipe put error:", e);
+              return undefined;
+            });
 
-      let added = 0;
-      if (success) {
-        if (appendFromStorage && recipes.length > 3) {
-          const newest = recipes.slice(0, -3);
-          added = await ingest(newest);
-          await AsyncStorage.setItem('localStore', JSON.stringify(recipes.slice(-3)));
-          
-        } else {
-          added = await ingest(recipes);
+            const formatted = rawSwipe?.data;
+            const newRecipes = Array.isArray(formatted?.recipes)
+              ? formatted.recipes
+              : Array.isArray(formatted)
+              ? formatted
+              : [];
+
+            if (newRecipes.length > 0) {
+              const currLocal = await readLocal();
+              const merged = Array.isArray(currLocal) ? currLocal.concat(newRecipes) : newRecipes.slice();
+              const capped = merged.slice(-50);
+              await writeLocal(capped);
+            }
+          }
+        } catch (e) {
+          console.log("error posting swipes:", e);
+        } finally {
+          swipes.current.length = 0;
+          if (swipeSet.current && swipeSet.current.size > 50) swipeSet.current.clear();
         }
-      } else {
-        added = await ingest(DATA);
       }
 
-      if (added === 0 && !appendFromStorage) hasMoreRef.current = false;
+      try {
+        const rawPull = await axios.get(RECIPES_URL, {
+          headers: { Authorization: jwt ?? "" },
+        }).catch((e) => {
+          console.log("recipes get error:", e);
+          return undefined;
+        });
+
+        const data = rawPull?.data;
+        serverRecipes = Array.isArray(data?.recipes) ? data.recipes : Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.log("unexpected fetch error:", e);
+        serverRecipes = [];
+      }
+
+      if (Array.isArray(serverRecipes) && serverRecipes.length > 0) {
+        const currLocal = await readLocal();
+        const merged = Array.isArray(currLocal) ? currLocal.concat(serverRecipes) : serverRecipes.slice();
+
+        const capped = merged.slice(-100);
+        await writeLocal(capped);
+
+        const chunk = capped.slice(0, CHUNK);
+        const remainder = capped.slice(chunk.length);
+        await writeLocal(remainder);
+
+        const added = await ingest(chunk);
+        if (added === 0) hasMoreRef.current = false;
+        return added;
+      }
+
+      const added = await ingest(DATA);
+      if (added === 0) hasMoreRef.current = false;
       return added;
     } catch (err) {
       console.log("fetcher error:", err);
       const added = await ingest(DATA);
       if (added === 0) hasMoreRef.current = false;
       return added;
+    } finally {
+      if (appendFromStorage) {
+        setStarting(false);
+      }
     }
   }, [ingest]);
 
+
   const starter = useCallback(async () => {
     try {
-      const localData = await AsyncStorage.getItem('localStore');
-      let parsed;
-      if(localData){
-        await AsyncStorage.removeItem("localStore")
-        parsed = JSON.parse(localData);
-      }
-      else{
-        parsed = []
-      }
-      parsed.forEach((each)=>{Image.prefetch(each.imgurl)})
-      hasMoreRef.current = true;
-
-      if (Array.isArray(parsed)) {
-        await seedInitial(parsed);
-        await fetcher(true);
-      } else {
-        setCards([]);
-        await fetcher(false);
-      }
+      await fetcher(true);
     } catch (e) {
       console.error("starter error:", e);
       setCards([]);
-      await fetcher(false);
     }
   }, [seedInitial, fetcher]);
 
@@ -247,11 +289,15 @@ export default function HomeScreen() {
   const sendRecipe = useCallback(async (recipe, sendTo) => {
     try {
       const jwt = await AsyncStorage.getItem("jwt");
+      const profileRaw = await AsyncStorage.getItem("profile")
+      const profile = await JSON.parse(profileRaw)
+
       const res = await fetch(SENDRECIPE, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: jwt ?? "" },
-        body: JSON.stringify({ recipe, person: sendTo }),
+        body: JSON.stringify({ recipe, person: sendTo, username: profile.userName }),
       });
+      
       await res.json().catch(() => null);
     } catch (e) {
       console.log(e);
@@ -309,16 +355,6 @@ export default function HomeScreen() {
 
     return (
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: overlayOpacity, zIndex: 35 }]}>
-        <Pressable style={{ zIndex: 50 }}>
-          <Feather
-            style={{ position: "absolute", top: 25, right: 25, padding: 5 }}
-            name="send"
-            size={25}
-            color={visibleOverlay === "ing" ? "black" : "white"}
-            onPress={() => toggleOverlay("send")}
-          />
-        </Pressable>
-
         <BlurView intensity={100} tint={blurTint} style={StyleSheet.absoluteFill}>
           <ScrollView contentContainerStyle={{ padding: 30, paddingTop: 40, paddingBottom: 200 }}>
             <Text style={{ fontSize: 30, fontWeight: "bold", color: textColor, marginBottom: 20 }}>{title}</Text>
@@ -335,7 +371,15 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Pressable
+
+      {visibleOverlay !== 'send' && <Pressable
+        style={{ position: 'absolute', top: 25, right: 25, zIndex: 60, padding: 8 }}
+        onPress={() => toggleOverlay('send')}
+      >
+        <Feather name="send" size={28} color={colors.textColor} />
+      </Pressable>}
+
+      {!start ?<Pressable
         style={{
           position: 'absolute',
           top: '40%', 
@@ -344,8 +388,11 @@ export default function HomeScreen() {
           zIndex: 0,
           alignItems: 'center'
         }}
-        onPress={()=>{
-          fetcher(true)
+        onPress={async()=>{
+          const added = await fetcher(true)
+          if(added == 0){
+            alert("You ran out! Come back later")
+          }
         }}
       >
         <Text style={{
@@ -355,9 +402,16 @@ export default function HomeScreen() {
         </Text>
         <EvilIcons name="refresh" size={34} color={colors.textColor} />
 
-      </Pressable>
+      </Pressable>: <ActivityIndicator color={colors.pop} size={15} style={{
+          position: 'absolute',
+          top: '40%', 
+          left: '50%',
+          transform: [{ translateX: '-50%' }],
+          zIndex: 0,
+          alignItems: 'center'
+      }}/>}
 
-      {cards.map((card, index) => (
+      {cards.slice(0, VISIBLE_CARDS).map((card, index) => (
         <TinderCard
           key={getCardKey(card)}
           card={card}
@@ -366,6 +420,7 @@ export default function HomeScreen() {
           onSwipeComplete={handleCardShift}
         />
       ))}
+
       {renderOverlayContent()}
       <View style={styles.bottomBar}>
         <Pressable onPress={() => { if (cards[0]) toggleOverlay("ing"); }}>

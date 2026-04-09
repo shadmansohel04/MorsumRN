@@ -44,7 +44,7 @@ export default function RootLayout() {
 
   return (
     <View style={styles.container}>
-      <Animated.Text style={[styles.text, { opacity }]}>
+      <Animated.Text style={[styles.text, { opacity, color: colors.textColor }]}>
         Morsum
       </Animated.Text>
     </View>
@@ -61,8 +61,7 @@ function createStyles(colors) {
     },
     text: {
       fontSize: 50,
-      fontWeight: '600',
-      color: colors.textcolor,
+      fontWeight: '600'
     },
   });
 }

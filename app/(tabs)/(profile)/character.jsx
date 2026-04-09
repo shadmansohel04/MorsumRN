@@ -58,11 +58,12 @@ export default function CharacterScreen(){
     const changes = async() =>{
         try {
             const jwt = await AsyncStorage.getItem("jwt")
-            let profile = await AsyncStorage.getItem("profile")
+            const profileString = await AsyncStorage.getItem("profile")
+            let profile = await JSON.parse(profileString)
             profile.profile = attributes
             const stringed = JSON.stringify(profile)
             await AsyncStorage.setItem("profile", stringed)
-            router.back()
+            router.replace({pathname:"/"})
             
             const raw = await fetch(`${backendURI}/user/updateProfile`,{
                 method: "PUT",
@@ -72,10 +73,7 @@ export default function CharacterScreen(){
                 },
                 body: JSON.stringify(attributes)
             })
-            const response = await raw.json()
-            if(response && response.success){
-                alert("Reload to see change!")
-            }
+            // const response = await raw.json()
 
         } catch (error) {
             console.log(error)
@@ -102,7 +100,7 @@ export default function CharacterScreen(){
 
     return(
         <View style={styles.container}>
-            <Pressable style={[styles.imgButton, {top: 10, left: 10}]} onPress={()=>{router.back()}}>
+            <Pressable style={[styles.imgButton, {top: 10, left: 10}]} onPress={()=>{router.replace("/")}}>
                 <Text style={{fontSize: 40, zIndex: 10, color: colors.textColor}}>←</Text>
             </Pressable>
 

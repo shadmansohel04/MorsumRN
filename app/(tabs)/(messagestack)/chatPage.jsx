@@ -3,7 +3,6 @@ import { Stomp } from '@stomp/stompjs';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Image,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -16,10 +15,11 @@ import {
   View,
   TouchableOpacity,
 } from 'react-native';
+import { Image } from 'expo-image';
 import SockJS from 'sockjs-client';
-import { Colors } from '../../constants/Colors';
-import AntDesign from '@expo/vector-icons/AntDesign';
-import {getProfileFunction} from "../../constants/func"
+import { Colors } from '../../../constants/Colors';
+import Foundation from '@expo/vector-icons/Foundation';
+import {getProfileFunction} from "../../../constants/func"
 import Constants from "expo-constants"
 
 const backendURI = Constants.expoConfig.extra.backendURI
@@ -157,9 +157,17 @@ export default function ChatPage() {
     }
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item, index }) => {
     if (item.messageType === 'JOIN' || item.messageType === 'LEAVER') return null;
     const isOwnMessage = item.sender === username;
+    if( index == 0 && item.content == "Started chat"){
+      return(
+        <View
+          style={{ flex: 1, alignItems: isOwnMessage ? 'flex-end' : 'flex-start' }}
+        >
+          <Text style={{color: colors.placeholder, fontSize: 13}}>Started Chat</Text>
+        </View>)
+    }
     const arr = item.content.split('^^vv');
     const flag = arr[2] == selectedIMG
     return (
@@ -199,7 +207,7 @@ export default function ChatPage() {
                     zIndex: 12
                   }}
                 >
-                  <AntDesign name="like1" size={flag? 50: 20} color="rgba(58, 209, 78, 1)" />
+                  <Foundation name="like" size={flag? 60: 40} color="rgba(25, 150, 42, 1)" />
                 </Pressable>
                 <Image
                   style={{
@@ -209,6 +217,7 @@ export default function ChatPage() {
                     objectFit: 'cover',
                     zIndex: 10
                   }}
+                  cachePolicy={"disk"}
                   source={{ uri: arr[2] }}
                 />
                 <Text style={{
@@ -251,15 +260,15 @@ export default function ChatPage() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
         <View style={styles.container}>
           <Pressable
             style={{ position: 'absolute', padding: 10, top: 0, left: 20, zIndex: 10 }}
             onPress={() => {
-              router.push('../(tabs)/chats');
+              router.replace('/');
             }}
           >
             <Text style={{ color: colors.textColor, fontSize: 20 }}>←</Text>
@@ -325,7 +334,7 @@ function createStyles(colors) {
     container: {
       flex: 1,
       padding: 10,
-      backgroundColor: colors.background,
+      backgroundColor: colors.background
     },
     inputContainer: {
       flexDirection: 'row',

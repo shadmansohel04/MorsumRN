@@ -1,398 +1,481 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { RefreshControl, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View, Alert } from "react-native";
-import AvatarComp from "../../(comp)/person";
-import { Colors } from "../../../constants/Colors";
-import { getProfileFunction } from "../../../constants/func"
-import AntDesign from '@expo/vector-icons/AntDesign';
-import { Image } from "expo-image";
-import Constants from "expo-constants"
+import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from "expo-constants";
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Image } from 'expo-image';
+import {
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+} from 'react-native';
+import { hoursFromNow } from '../../../constants/func';
 
-const backendURI = Constants.expoConfig.extra.backendURI
-const LIK = `${backendURI}/profile/likedCards`
-const MY = `${backendURI}/recipe/getMyRecipes`
+const backendURI = Constants.expoConfig.extra.backendURI;
+const { width } = Dimensions.get('window');
+const GRID_SPACING = 16;
+const HORIZONTAL_PADDING = 24;
+const COLUMN_WIDTH = (width - (HORIZONTAL_PADDING * 2) - GRID_SPACING) / 2;
+const DAYS_PER_LOAD = 14;
 
-export default function ProfileScreen() {
-    const colorScheme = useColorScheme();
-    const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
-    const styles = createStyles(colors);
-
-    const [liked, setLiked] = useState([]);
-    const [past, setPast] = useState([]);
-    const [loadingLiked, setLoadingLiked] = useState(true);
-    const [loadingPast, setLoadingPast] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [selected, setSelected] = useState(true);
-
-    const [profileStats, setProfileStats] = useState({
-        name: "",
-        username: "",
-        totalFriends: NaN
-    });
-
-    const router = useRouter();
-
-    const [attributes, setAttributes] = useState({
-        skinColor: 0,
-        ear: "big",
-        hairColor: 0,
-        hairStyle: 0,
-        hatStyle: 0,
-        hatColor: 0,
-        eyeStyle: 0,
-        glassesStyle: 0,
-        noseStyle: 0,
-        mouthStyle: 0,
-        shirtStyle: 0,
-        shirtColor: 0,
-        bgColor: 0,
-    });
-
-    const getLikedFetch = async () => {
-        try {
-            setLoadingLiked(true);
-            const jwt = await AsyncStorage.getItem("jwt");
-            const profileLocalString = await AsyncStorage.getItem("profile");
-            if (profileLocalString) {
-                const locally = JSON.parse(profileLocalString);
-                if (locally?.profile) setAttributes(locally.profile);
-            }
-
-            const response = await fetch(LIK, {
-                method: "GET",
-                headers: { Authorization: jwt }
-            });
-
-            const data = await response.json();
-            if (data?.success && Array.isArray(data.data)) {
-                data.data.forEach((each)=> Image.prefetch(each.imgurl))
-                setLiked(data.data);
-            } else {
-                setLiked([]);
-            }
-        } catch (error) {
-            console.log(error);
-            setLiked([]);
-        } finally {
-            setLoadingLiked(false);
-        }
-    };
-
-    const getPastFetch = async () => {
-        try {
-            setLoadingPast(true);
-            const jwt = await AsyncStorage.getItem("jwt");
-
-            const response = await fetch(MY, {
-                method: "GET",
-                headers: { Authorization: jwt }
-            });
-
-            const data = await response.json();
-            if (data?.success && Array.isArray(data.recipes)) {
-                data.recipes.forEach((each)=> {
-                    if(!each.imgurl.endsWith("null") || !each.imgurl.endsWith("default")){
-                        Image.prefetch(each.imgurl)
-                    }
-                })
-                setPast(data.recipes.filter((each)=>{
-                    return !(each.imgurl.endsWith("null") || each.imgurl.endsWith("default"));
-                }));
-            } else {
-                setPast([]);
-            }
-        } catch (error) {
-            console.log(error);
-            setPast([]);
-        } finally {
-            setLoadingPast(false);
-        }
-    };
-
-    const getProfileFetch = async () => {
-        try {
-            const profile = await getProfileFunction();
-            if (profile) {
-                if (profile.profile) setAttributes(profile.profile);
-                setProfileStats({
-                    name: (profile.firstname || "") + " " + (profile.lastname || ""),
-                    username: profile.userName || "",
-                    totalFriends: profile.totalFriends
-                });
-                await AsyncStorage.setItem("profile", JSON.stringify(profile));
-            }
-        } catch (error) {
-            console.log(error);
-        }
-    };
-
-    useEffect(() => {
-        (async () => {
-            await getLikedFetch();
-            await getPastFetch();
-            await getProfileFetch();
-        })();
-    }, []);
-
-    const logout = () => {
-        Alert.alert(
-            "Logout?",
-            "Are you sure you want to log out?",
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Yes',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await AsyncStorage.clear();
-                        router.replace("/(uauth)");
-                    }
-                }
-            ]
-        );
-    };
-
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await getProfileFetch();
-        await getLikedFetch();
-        await getPastFetch();
-        setRefreshing(false);
-    };
-
-    const renderGrid = (list, loading) => {
-        if (loading) {
-            return <ActivityIndicator size="large" color="rgb(0, 208, 255)" style={styles.loading} />;
-        }
-
-        if (!list || list.length === 0) {
-            return <Text style={{ color: colors.textColor, fontSize: 18, marginTop: 20 }}>No recipes found.</Text>;
-        }
-
-        return (
-            <View style={styles.grid}>
-                {list.map((item, index) => {
-                    const img = item?.imgurl;
-                    return (
-                        <TouchableOpacity
-                            key={index}
-                            style={styles.gridItem}
-                            onPress={() => {
-                                router.push({
-                                    pathname: 'cardCopy',
-                                    params: { data: JSON.stringify({
-                                        ...item,
-                                        liked: item.date? formatDate(item.date): null
-                                    })}
-                                });
-                            }}
-                        >
-                            {item.date && (
-                                <Text style={{ color: colors.textColor, fontSize: 16, fontWeight: 700 }}>
-                                    {formatDate(item.date)}
-                                </Text>
-                            )}
-
-                            <Image 
-                                source={{ uri: img, cache: "force-cache" }} 
-                                style={styles.image} 
-                            />
-
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
-        );
-    };
-
-    return (
-        <ScrollView
-            style={styles.container}
-            refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                />
-            }
-        >
-            <View style={styles.topHalf}>
-                {profileStats.name === "" ? (
-                    <ActivityIndicator style={{ marginBottom: 26 }} />
-                ) : (
-                    <Text style={styles.name}>{profileStats.name}</Text>
-                )}
-
-                <AvatarComp size={200} attributes={attributes} />
-
-                <Pressable style={{ position: 'absolute', top: 20, right: 20 }} onPress={logout}>
-                    <AntDesign name="logout" size={20} color={colors.textColor} />
-                </Pressable>
-
-                <Pressable
-                    style={styles.changeAvatar}
-                    onPress={() => {
-                        router.push({
-                            pathname: "character",
-                        })
-                    }}
-                >
-                    <Text style={styles.changeText}>Change Avatar</Text>
-                </Pressable>
-
-                <Pressable
-                    style={{ alignItems: 'center' }}
-                    onPress={() => {
-                        router.push({
-                            pathname: './freindsPage',
-                            params: { username: profileStats.username }
-                        });
-                    }}
-                >
-                    <Text style={{ color: colors.textColor, fontSize: 22, fontWeight: 900 }}>
-                        {Number.isNaN(profileStats.totalFriends) ? "..." : profileStats.totalFriends}
-                    </Text>
-                    <Text style={{ color: colors.textColor }}>Freinds</Text>
-                </Pressable>
-            </View>
-
-            <View style={styles.bottomHalf}>
-                {/* Segmented control: Liked | Past */}
-                <View style={styles.tabRow}>
-                    <Pressable
-                        onPress={() => setSelected(true)}
-                        style={[styles.tab, selected && styles.tabActive]}
-                    >
-                        <Text style={styles.tabText}>Liked</Text>
-                    </Pressable>
-                    <Pressable
-                        onPress={() => setSelected(false)}
-                        style={[styles.tab, !selected && styles.tabActive]}
-                    >
-                        <Text style={styles.tabText}>Past</Text>
-                    </Pressable>
-                </View>
-
-                <View style={{ width: "100%" }}>
-                    <View style={{ display: selected ? "flex" : "none" }}>
-                        {renderGrid(liked, loadingLiked)}
-                    </View>
-                    <View style={{ display: !selected ? "flex" : "none" }}>
-                        {renderGrid(past, loadingPast)}
-                    </View>
-                </View>
-
-
-            </View>
-        </ScrollView>
-    );
-}
-
-function createStyles(colors) {
-    return StyleSheet.create({
-        changeText: {
-            fontSize: 18,
-            color: colors.textColor,
-        },
-        name: {
-            fontSize: 30,
-            marginBottom: 15,
-            color: colors.textColor
-        },
-        changeAvatar: {
-            marginTop: 10,
-            marginBottom: 10,
-            backgroundColor: colors.pop,
-            padding: '3%',
-            borderRadius: 20
-        },
-        loading: {
-            marginTop: 40
-        },
-        container: {
-            flex: 1,
-            backgroundColor: colors.background,
-            padding: 10
-        },
-        topHalf: {
-            minHeight: 400,
-            backgroundColor: colors.halfBackground,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderRadius: 30,
-            padding: 20,
-        },
-        bottomHalf: {
-            padding: 8,
-            paddingTop: 13,
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-
-        // Tabs
-        tabRow: {
-            width: '100%',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 10,
-            marginBottom: 12,
-        },
-        tab: {
-            borderRadius: 14,
-            paddingVertical: 6,
-            paddingHorizontal: 14,
-            borderWidth: 1,
-            borderColor: colors.halfBackground,
-            backgroundColor: 'transparent',
-        },
-        tabActive: {
-            backgroundColor: colors.pop,
-            borderColor: 'transparent',
-        },
-        tabText: {
-            color: colors.textColor,
-            fontSize: 22,
-        },
-
-        // Grid
-        grid: {
-            width: '100%',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            gap: 10,
-        },
-        gridItem: {
-            width: '31%',
-            aspectRatio: 0.6,
-            marginBottom: 10,
-            borderRadius: 8,
-            overflow: 'hidden',
-            alignItems: 'center'
-        },
-        image: {
-            width: '100%',
-            height: '100%',
-            contentFit: 'cover',
-        },
-
-        text: {
-            color: colors.textColor,
-            marginBottom: 20,
-            fontSize: 25
-        },
-    });
-}
-
-const formatDate = (dateString) => {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  
+const formatDateLabel = (dateString) => {
   const date = new Date(dateString);
-  const month = months[date.getMonth()];
-  const day = date.getDate();
-  const year = date.getFullYear();
-  
-  return `${month}/${day}/${year}`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
+
+export default function MorsumProfile() {
+  const router = useRouter();
+  const [calendarItems, setCalendarItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [daysOffset, setDaysOffset] = useState(0);
+  const [databaseOffset, setDatabaseOffset] = useState(0);
+  const [availableSpotlights, setAvailableSpotlights] = useState({});
+  const [hasReachedEnd, setHasReachedEnd] = useState(false);
+  const [avatarImage, setAvatar] = useState(null);
+  const [username, setUsername] = useState(null);
+  const [canPull, setCanPull] = useState(true);
+  const [JOIN_DATE, set_JOIN_DATE] = useState(null);
+  const [startData, setStart] = useState(null);
+
+  const handleLogout = async()=>{
+    try {
+      await AsyncStorage.clear()
+      router.replace("/(uauth)")
+    } 
+    catch (error) {
+      router.reload("/(uauth)")
+    }
+  }
+
+  const getURL = async () => {
+    try {
+      const url = await AsyncStorage.getItem("avatarUrl");
+      const user = await AsyncStorage.getItem("username");
+      setAvatar(url);
+      if (user) {
+        setUsername(user);
+      }
+    } catch (error) {
+      return null;
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      getURL();
+    }, [])
+  );
+
+  const loadMoreDays = async (isRefresh = false) => {
+    if ((isLoading && !isRefresh) || (hasReachedEnd && !isRefresh)) return;
+
+    let joinDate = JOIN_DATE;
+
+    if (!joinDate) {
+      const date = await AsyncStorage.getItem("createdat");
+      if (date) {
+        const parsed = new Date(date);
+        set_JOIN_DATE(parsed);
+        joinDate = parsed;
+      } else {
+        joinDate = new Date("2025-01-01");
+      }
+    }
+
+    const boundedJoinDate = new Date(joinDate);
+    boundedJoinDate.setDate(boundedJoinDate.getDate() - 2);
+
+    const boundedJoinDateString = boundedJoinDate
+      .toISOString()
+      .split("T")[0];
+
+    setIsLoading(true);
+
+    try {
+      let updatedSpotlights = isRefresh ? {} : { ...availableSpotlights };
+      let currentCanPull = isRefresh ? true : canPull;
+      let currentDatabaseOffset = isRefresh ? 0 : databaseOffset;
+      let currentDaysOffset = isRefresh ? 0 : daysOffset;
+
+      if (Object.keys(updatedSpotlights).length < 5 && currentCanPull) {
+        const jwt = await AsyncStorage.getItem("jwt");
+        const response = await fetch(
+          `${backendURI}/Post/getAllSpotLights?offsetParam=${currentDatabaseOffset}&firstPull=${startData === null}`,
+          {
+            headers: { Authorization: jwt },
+          }
+        );
+
+        if (response.ok) {
+          const rawJSON = await response.json();
+          const fetchedSpotlights = rawJSON.spotlightData
+          if (startData === null){
+            setStart({
+              total: rawJSON.totalSpotlight,
+              streak: rawJSON.totalStreak
+            })
+          }
+          if (Object.keys(fetchedSpotlights).length === 0) {
+            setCanPull(false);
+            currentCanPull = false;
+          } else {
+            updatedSpotlights = {
+              ...updatedSpotlights,
+              ...fetchedSpotlights,
+            };
+            setDatabaseOffset(currentDatabaseOffset + 1);
+          }
+        } else {
+          setCanPull(false);
+          currentCanPull = false;
+        }
+      }
+
+      const newItems = [];
+      let hitJoinDate = false;
+
+      for (let i = 0; i < DAYS_PER_LOAD; i++) {
+        const targetDate = new Date(
+          Date.now() - (currentDaysOffset + i) * 86400000
+        );
+        const dateKey = targetDate.toISOString().split("T")[0];
+
+        if (dateKey < boundedJoinDateString) {
+          hitJoinDate = true;
+          break;
+        }
+
+        let imageUri = null;
+        let postData = null;
+
+        if (updatedSpotlights[dateKey]) {
+          imageUri = updatedSpotlights[dateKey][0];
+
+          const temp = updatedSpotlights[dateKey][2];
+          const timeago = hoursFromNow(temp.createdAt);
+
+          postData = {
+            meta: `${timeago} hours ago`,
+            heroImage: temp.imgurl,
+            caption: temp.caption,
+            individualData: {
+              flavor: temp.flavor,
+              rating: temp.stars,
+              time: temp.time,
+              quantity: temp.quant,
+            },
+            badges: temp.badges,
+            homemade: temp.homemade,
+          };
+
+          delete updatedSpotlights[dateKey];
+        }
+
+        newItems.push({
+          id: dateKey,
+          date: dateKey,
+          displayDate: formatDateLabel(dateKey),
+          imageUri,
+          postData,
+        });
+      }
+
+      setAvailableSpotlights(updatedSpotlights);
+      setCalendarItems(isRefresh ? newItems : (prev) => [...prev, ...newItems]);
+      setDaysOffset(currentDaysOffset + newItems.length);
+
+      if (hitJoinDate) {
+        setHasReachedEnd(true);
+      } else if (isRefresh) {
+        setHasReachedEnd(false);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+      if (isRefresh) {
+        setRefreshing(false);
+      }
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    getURL();
+    loadMoreDays(true);
+  }, [JOIN_DATE]);
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <Pressable 
+        onPress={handleLogout}
+        style={{
+          width: 55,
+          height: 30,
+          position: "absolute",
+          right: 10,
+          top: 10,
+          backgroundColor: "rgba(255, 135, 98, 0.8)",
+          justifyContent: "center",
+          alignItems: "center",
+          borderRadius: 50
+        }}>
+        <Text style={{fontSize: 10, fontWeight: "700"}}>Logout</Text>
+      </Pressable>
+      <View style={styles.profileHeader}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatarBorder}>
+            <Pressable
+              onPress={() => { router.push("newupload") }}
+              style={styles.innerPadding}
+            >
+              {avatarImage ? <Image
+                cachePolicy={"disk"}
+                source={{ uri: avatarImage }}
+                style={styles.profileImage}
+              /> : (
+                <View
+                  style={{
+                    backgroundColor: "rgba(255, 135, 98, 0.5)",
+                    width: "100%",
+                    height: "100%",
+                    justifyContent: "center",
+                    alignItems: "center"
+                  }}
+                >
+                  <Text
+                    style={{ color: "white", fontSize: 45 }}
+                  >
+                    {username ? username[0].toUpperCase() : ""}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
+        <Text style={styles.userName}>{username}</Text>
+
+      </View>
+
+      <View style={styles.statsSection}>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: "#FF8762" }]}>{startData?.total}</Text>
+          <Text style={styles.statLabel}>TOTAL SPOTLIGHTS</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.statNumber, { color: "#a0d68c" }]}>{startData?.streak}</Text>
+            <MaterialIcons name="whatshot" size={24} color="#a0d68c" />
+          </View>
+          <Text style={styles.statLabel}>DAILY STREAK</Text>
+        </View>
+      </View>
+
+      <View style={[styles.tab, styles.activeTab]}>
+        <Text style={styles.activeTabText}>My Spotlights</Text>
+      </View>
+    </View>
+  );
+
+  const renderGridItem = ({ item }) => {
+    if (item.imageUri) {
+      return (
+        <TouchableOpacity
+          onPress={() => {
+            let temp = item.postData;
+            temp.name = username;
+            temp.avatar = avatarImage;
+            temp.title = "SPOTLIGHT";
+            router.push({
+              pathname: "individualPost",
+              params: {
+                data: JSON.stringify(temp)
+              }
+            });
+          }}
+          style={styles.gridItem}
+        >
+          <Image source={{ uri: item.imageUri }} style={styles.gridImage} />
+          <View style={styles.dateOverlay}>
+            <Text style={styles.dateText}>{item.displayDate}</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    } else {
+      return (
+        <View style={[styles.gridItem, styles.emptyGridItem]}>
+          <Text style={styles.emptyDateText}>{item.displayDate}</Text>
+          <MaterialIcons name="photo-camera" size={24} color="#3a3d38" style={{ marginTop: 8 }} />
+        </View>
+      );
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={calendarItems}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        renderItem={renderGridItem}
+        ListHeaderComponent={renderHeader}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        columnWrapperStyle={styles.rowWrapper}
+        onEndReached={() => loadMoreDays(false)}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FF8762"
+            colors={["#FF8762"]}
+          />
+        }
+        ListFooterComponent={
+          isLoading && !hasReachedEnd && !refreshing ? (
+            <ActivityIndicator size="small" color="#FF8762" style={{ marginVertical: 20 }} />
+          ) : null
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0d0f0c',
+  },
+  headerContainer: {
+    paddingBottom: 24,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  avatarContainer: {
+    position: 'relative',
+    width: 120,
+    height: 120,
+  },
+  avatarBorder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#FF8762',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  innerPadding: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  userName: {
+    marginTop: 24,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  statsSection: {
+    marginTop: 40,
+    flexDirection: 'row',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    width: COLUMN_WIDTH,
+    height: 100,
+    backgroundColor: '#141612',
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: '800'
+  },
+  statLabel: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E3E7DE',
+    opacity: 0.5,
+    letterSpacing: 1.1,
+  },
+  tab: {
+    flex: 1,
+    justifyContent: 'center',
+    borderRadius: 100,
+    alignItems: 'center',
+    backgroundColor: 'rgb(255, 135, 98)',
+    marginTop: 25,
+    marginHorizontal: HORIZONTAL_PADDING,
+    height: 48,
+  },
+  activeTabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0d0f0c',
+  },
+  rowWrapper: {
+    justifyContent: 'space-between',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginBottom: GRID_SPACING,
+  },
+  gridItem: {
+    width: COLUMN_WIDTH,
+    height: COLUMN_WIDTH,
+    borderRadius: 16,
+    backgroundColor: '#1d201c',
+    overflow: 'hidden',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  dateOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  dateText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyGridItem: {
+    borderWidth: 2,
+    borderColor: '#1d201c',
+    backgroundColor: 'transparent',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyDateText: {
+    color: '#3a3d38',
+    fontSize: 14,
+    fontWeight: '700',
+  }
+});

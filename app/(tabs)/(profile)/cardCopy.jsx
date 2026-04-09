@@ -1,6 +1,5 @@
 import Entypo from '@expo/vector-icons/Entypo';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
@@ -43,7 +42,7 @@ export default function oneCard(){
             console.log(error)
             alert("Failed to remove, please try again later")
         }
-        router.back()
+        router.replace("/")
     }
 
     if(item == null){
@@ -57,12 +56,10 @@ export default function oneCard(){
 
     return(
         <View style={styles.container}>
-            <Pressable style={[styles.imgButton, {top: 10, left: 10}]} onPress={()=>{router.back()}}>
+            <Pressable style={[styles.imgButton, {top: 10, left: 10}]} onPress={()=>{router.replace("/")}}>
                 <Text style={{fontSize: 40, zIndex: 10, color: colors.textColor}}>←</Text>
             </Pressable>
             <RecipeCard user={item}/>
-
-
                 <View style={styles.bottom}>
                     {!item.liked ? (
                         <Pressable 
@@ -106,17 +103,6 @@ function createStyles(colors) {
             marginTop: '4%',
             flexDirection: 'row',
             justifyContent: 'center'
-        },
-        image:{
-            width: '100%',
-            height: '100%',
-            resizeMode: 'cover'
-        },
-        imageWrapper:{
-            height: '95%',
-            width: '100%',
-            borderRadius: 30,
-            overflow: 'hidden'
         },
         loadingText: {
             fontSize: 20,

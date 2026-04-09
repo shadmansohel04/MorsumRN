@@ -18,13 +18,7 @@ export default function StackLayout() {
             headerShown: false
         }}
     >
-      <Stack.Screen 
-        name='index'
-        options={{
-          animationTypeForReplace: "pop"
-        }}
-      />
-
+      
     </Stack>
     </>
   );

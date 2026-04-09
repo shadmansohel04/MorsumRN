@@ -1,204 +1,181 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, useColorScheme, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
-import { useState } from 'react';
-import { Colors } from '../../constants/Colors';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Pressable, KeyboardAvoidingView, ScrollView, useColorScheme, StyleSheet, View, Image, Text, Platform, useWindowDimensions, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import Constants from "expo-constants"
+import { LinearGradient } from 'expo-linear-gradient';
+import { theme } from "../../constants/Colors";
+import newLogo from "../../assets/images/newLogo.png";
+import pantryImg from "../../assets/images/Pantry.png";
+import Constants from "expo-constants";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState } from 'react';
+const backendURI = Constants.expoConfig.extra.backendURI;
 
-WebBrowser.maybeCompleteAuthSession();
-
-const backendURI = Constants.expoConfig.extra.backendURI
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
   const colorScheme = useColorScheme();
-  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
-  const styles = createStyles(colors);
-  const router = useRouter();
+	const [email, setEmail] = useState("")
+	const [password, setPassword] = useState("")
+	const colors = colorScheme === 'dark' ? theme.dark : theme.dark;
+  const fonts = theme.font;
+  const { width: screenWidth } = useWindowDimensions();
+	const router = useRouter()
+  const styles = createStyles(colors, fonts, screenWidth);
 
-  const CLIENT_ID = '258505425894-6bpi9hta29e58t1ee7bv44535en6sic7.apps.googleusercontent.com';
-  const discovery = {
-    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenEndpoint: 'https://oauth2.googleapis.com/token',
-    revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-  };
+	const handleLogin = async()=>{
+		try {
+			const raw = await fetch(`${backendURI}/account/login`,{
+				method: "POST",
+				body: JSON.stringify({
+					email,
+					password
+				}),
+				headers: {
+					"Content-Type": "application/json"
+				}
+			})
+			if(!raw.ok){
+				throw Error("login failed")
+			}
+			const response = await raw.json()
+			if (response && response.token){
+				await AsyncStorage.setItem("jwt", response.token)
+				await AsyncStorage.setItem("username", response.username)
+				await AsyncStorage.setItem("avatarUrl", response.avatarUrl)
+				await AsyncStorage.setItem("createdat", response.createdAt)
+			}
+			router.replace("../(tabs)")
+		} 
+		catch (error) {
+			console.log(error)
+			alert("Login failed, please try again")
+		}
+	}
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: CLIENT_ID,
-      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
-      scopes: ['openid', 'profile', 'email'],
-      responseType: 'id_token',
-    },
-    discovery
-  );
-
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      alert('Please enter email and password');
-      return;
-    }
-    try {
-      setLoading(true);
-      const raw = await fetch(`${backendURI}/user/loginAccount`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-
-      const res = await raw.json();
-      if (res && res.token) {
-        await AsyncStorage.setItem("jwt", res.token);
-        return router.replace("../(tabs)");
-      }
-      throw new Error("Login failed");
-    } catch (error) {
-      console.log(error);
-      alert("Login failed, please try again");
-      setEmail("");
-      setPassword("");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        locations={[0, 0.2, 0.7]}
-        colors={[colors.background, colors.pop, colors.background]}
-        style={{ flex: 1 }}
+  return(
+    <KeyboardAvoidingView
+      style={{ flex: 1, width: '100%', backgroundColor: colors.background}}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === "ios"? 50: 20}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        style={{flex: 1}}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scrollContainer}
-              keyboardShouldPersistTaps="handled"
+        <View style={{flexDirection: "row", height: 80, width: "65%", alignItems: "center", justifyContent: "center", marginBottom: 15}}>
+          <View style={{width: 35, height: 35, marginRight: 15}}>
+            <Image source={newLogo} style={{width: "100%", height: "100%"}}/>
+          </View>
+          <Text style={{fontFamily: fonts.title, fontWeight: '900', fontSize: 58, color: colors.titleText}}>Morsum</Text>
+        </View>
+        <Text style={{marginBottom: 15, color: colors.boldText, fontWeight: '700', fontSize: 22, fontFamily: fonts.title}}>Your plate, your story</Text>
+        <Text style={{textAlign: "center", width: 280, color: colors.subtleText, fontWeight: '400', fontSize: 17, fontFamily: fonts.subText}}>Capture the warmth of every meal. Share your daily morsels with those who matter.</Text>
+        
+        <View style={{width: screenWidth - 48, height: 240, borderRadius: 24, marginTop: 40}}>
+          <Image 
+            style={{width: "100%", height: "100%", borderRadius: 24}} 
+            resizeMode='cover' 
+            source={pantryImg}
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <Text style={styles.labelText}>EMAIL</Text>
+          <TextInput onChangeText={(e)=>{setEmail(e)}} style={styles.input} placeholder='johnSmith@morsum.com' placeholderTextColor={"rgba(227, 231, 222, 0.3)"}/>
+          
+          <Text style={styles.labelText}>PASSWORD</Text>
+          <TextInput onChangeText={(e)=>{setPassword(e)}} style={styles.input} placeholder='********' placeholderTextColor={"rgba(227, 231, 222, 0.3)"} secureTextEntry={true}/>
+          
+          <Pressable
+						onPress={handleLogin}
+						style={styles.buttonShadow}
+					>
+            <LinearGradient
+              colors={['#FF8762', '#FE6F42']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientBackground}
             >
-              <Text style={styles.title}>Morsum</Text>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Login</Text>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  placeholderTextColor={colors.placeholder}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor={colors.placeholder}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
-
-                {!loading ? (
-                  <>
-                    <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                      <Text style={styles.buttonText}>Log In</Text>
-                    </TouchableOpacity>
-
-                    {/* <TouchableOpacity
-                      style={[
-                        styles.button,
-                        { backgroundColor: 'white', borderColor: colors.textColor, borderWidth: 1, borderStyle: 'solid' },
-                      ]}
-                      onPress={() => promptAsync()}
-                      disabled={!request}
-                    >
-                      <Text style={[styles.buttonText, { color: colors.pop }]}>Log In With Google</Text>
-                    </TouchableOpacity> */}
-
-                    <TouchableOpacity onPress={() => router.push("signup")}>
-                      <Text style={{ color: colors.textColor, marginTop: 10 }}>Sign up</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <ActivityIndicator color={colors.pop} size={30} />
-                )}
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
-      </LinearGradient>
-    </SafeAreaView>
-  );
+              <Text style={styles.buttonText}>Login</Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable
+						onPress={()=>{router.push("signup")}}
+            style={{marginTop: 15, alignItems: "center"}}
+          >
+            <Text style={{ color: "#FF8762" }}>
+              <Text style={{ color: "#FFFFFF" }}>
+                Don't have an account?{" "}
+              </Text>
+              Get started
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  )
 }
 
-function createStyles(colors) {
+function createStyles(colors, fonts, width) {
   return StyleSheet.create({
-    scrollContainer: {
+    scrollContent: {
+      alignItems: "center",
       flexGrow: 1,
+      marginTop: 20
+    },
+    inputContainer:{
+      width: width - 68,
+      marginTop: 10,
+    },
+    labelText: {
+      width: "100%",
+      fontFamily: fonts.capLabel,
+      fontSize: 12,
+      color: "#E3E7DE",
+      marginBottom: 8,
+    },
+    input:{
+      width: "100%",
+      height: 56,
+      backgroundColor: "#1d201c",
+      borderRadius: 12,
+      fontFamily: fonts.title,
+      fontSize: 16,
+      color: "#E3E7DE",
+      paddingHorizontal: 16,
+      marginBottom: 10
+    },
+
+    buttonShadow: {
+      height: 54,
+      marginTop: 20,
+      borderRadius: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#FF8762',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 24,
+        },
+        android: {
+          elevation: 8,
+          shadowColor: '#FF8762',
+        },
+      }),
+    },
+
+    gradientBackground: {
+      flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingBottom: 40,
+      borderRadius: 16,
     },
-    title: {
-      fontSize: 55,
-      fontWeight: '100',
-      color: 'white',
-      marginTop: '15%',
-      marginBottom: 20,
-    },
-    card: {
-      width: '90%',
-      backgroundColor: colors.background,
-      padding: 30,
-      borderRadius: 30,
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 5,
-    },
-    cardTitle: {
-      color: colors.textColor,
-      fontSize: 20,
-      fontWeight: '300',
-      marginBottom: 20,
-      width: '100%',
-      textAlign: 'left',
-    },
-    input: {
-      width: '100%',
-      padding: 12,
-      marginBottom: 15,
-      borderWidth: 1.5,
-      borderColor: colors.textColor,
-      borderRadius: 12,
-      color: colors.textColor,
-      backgroundColor: colors.fillColor || 'transparent',
-    },
-    button: {
-      backgroundColor: colors.halfBackground,
-      paddingVertical: 12,
-      borderRadius: 12,
-      width: '100%',
-      alignItems: 'center',
-      marginTop: 10,
-      marginBottom: 10,
-    },
+
     buttonText: {
-      color: colors.textColor,
-      fontWeight: 'bold',
-      fontSize: 16,
+      fontFamily: 'PlusJakartaSans-Bold', 
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#0d0f0c',
     },
-  });
+  })
 }

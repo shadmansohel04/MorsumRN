@@ -1,19 +1,24 @@
-import AntDesign from '@expo/vector-icons/AntDesign';
+import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Dimensions, ActivityIndicator, Animated, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 import MapView, { Callout, Marker } from 'react-native-maps';
 import AvatarComp from "../(comp)/person";
 import { Colors } from "../../constants/Colors";
+import {deleteLocation} from "../../constants/func"
+import { Image } from 'expo-image';
+
 import Constants from "expo-constants"
 
 const backendURI = Constants.expoConfig.extra.backendURI
 
 export default function MapScreen(){    
+    const { width } = Dimensions.get('window');
+
     const colorScheme = useColorScheme();
     const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
     const styles = createStyles(colors);
@@ -23,22 +28,19 @@ export default function MapScreen(){
     const [freinds, setFreinds] = useState([])
     const [loading, setLoad] = useState(true)
     const [filter, setFilter] = useState("")
-    const [debounced, setDebouncedText] = useState("")
-    const [newPeople, setNewPeople] = useState([])
     const [selected, setSelected] = useState(null)
     const markRefs = useRef({})
 
     const slideAnim = useRef(new Animated.Value(1500)).current;
     const likeAnim = useRef(new Animated.Value(100)).current;
     const router = useRouter()
-    const [loadNew, setLoadNew] = useState(false)
     const [update, setUpdate] = useState(false)
 
     // I HAVE BOOL LOGIC FOR NOW BUT MAY NOT NEED
     const toggleLike = (index) => {
-        if(freinds[index].imgurl != null){
+        if(!freinds[index].imgurl.endsWith("null")){
             Animated.timing(likeAnim, {
-                toValue: 0,        
+                toValue: -width/2.6,       
                 duration: 500,
                 useNativeDriver: true,
             }).start(() => {
@@ -120,57 +122,6 @@ export default function MapScreen(){
         }
     }
 
-    const deleteFriend = async(friendID) =>{
-        try {
-            const jwt = await AsyncStorage.getItem("jwt")
-            const raw = await fetch(`${backendURI}/user/deleteFriend`,{
-                method:"DELETE",
-                headers:{
-                    "Authorization": jwt,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    friendID: friendID,
-                    pending: false
-                })
-            })
-
-            const response = await raw.json()
-            if(!response && !response.success){
-                throw Error("Didn't work")
-            }
-            setFreinds((prev)=>{
-                return prev.filter((item)=> item.friend_id != friendID)
-            })
-        } catch (error) {
-            console.log(error)
-            alert("Failed to remove friend")
-        }
-    }
-
-    const freindRequest = async(username) =>{
-        try {
-            const jwt = await AsyncStorage.getItem("jwt")
-            const raw = await fetch(`${backendURI}/user/freindRequest`,{
-                method: "POST",
-                headers:{
-                    "Authorization": jwt,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    username: username
-                })
-            })
-            const response = await raw.json()
-            setNewPeople((prev)=>{
-                return(prev.filter((each)=> each.username!= username))
-            })
-            alert("Friend request sent")
-        } catch (error) {
-            console.log(error)
-        }
-    }
-
     const stars = (value) => {
         return [1, 2, 3, 4, 5].map((star) => (
             <View key={star}>
@@ -178,54 +129,6 @@ export default function MapScreen(){
             </View>
         ));
     };
-
-
-    // SET DEBOUNCED BASED ON FILTER
-    useEffect(() => {
-        if(filter == ""){
-            setNewPeople([])
-        }
-        const handler = setTimeout(() => {
-        setDebouncedText(filter);
-        }, 500);
-
-        return () => clearTimeout(handler);
-    }, [filter]);
-
-    // SEARCH BASED ON DEBOUNCED
-    useEffect(()=>{
-        const searchFreinds = async ()=>{
-            setLoadNew(true)
-            try {
-                const jwt = await AsyncStorage.getItem("jwt")
-                const rawPeople = await fetch(`${backendURI}/user/findPeople`,{
-                    method: "POST",
-                    headers:{
-                        "Authorization": jwt,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        search: debounced
-                    })
-                })
-                const response = await rawPeople.json()
-                if(response && response.success){
-                    return setNewPeople(response.profile)
-                }
-                throw Error("searchfailed")
-            } catch (error) {
-                console.log(error)
-            }
-            finally{
-                setLoadNew(false)
-            }
-        }
-        if(debounced != ""){
-            console.log("searching")
-            searchFreinds();
-        }
-
-    }, [debounced])
 
     const getFreinds = async()=>{
         setLoad(true)
@@ -342,6 +245,9 @@ export default function MapScreen(){
                         alert("Updating Location!")
                         updateLocation()
                     }
+                    else{
+                        deleteLocation()
+                    }
                     const toString = `${!update}`
                     AsyncStorage.setItem("update", toString)
                     setUpdate((prev)=> !prev)
@@ -371,7 +277,7 @@ export default function MapScreen(){
                     }}
                     style={{paddingRight: 30, paddingLeft: 30, paddingBottom: 30}}
                 >
-                    <AntDesign name="caretdown" size={24} color={colors.textColor} />
+                    <Entypo name="chevron-down" size={24} color={colors.textColor}/>
                 </Pressable>
                 <TextInput 
                     placeholder='Search' 
@@ -398,40 +304,16 @@ export default function MapScreen(){
                                 }}
                             >
                                 <View style={styles.currentFreind}>
-                                    <AvatarComp size={50} attributes={each.profile}/>
-                                    <Text style={{fontSize: 18, color: 'white'}}>{each.username}</Text>
-                                    <TouchableOpacity
-                                        onPress={()=>{
-                                            deleteFriend(each.friend_id)
-                                        }}
-                                    >
-                                        <Text style={{ fontWeight: 300, color: 'white', padding: 15, backgroundColor: 'rgba(255, 0, 0, 0.4)', borderRadius: 20}}>Remove</Text>
-                                    </TouchableOpacity>
+                                    <AvatarComp size={50} attributes={each.profile} streak={each.streak}/>
+                                    <Text style={{fontWeight: 300, color: 'white', padding: 15, backgroundColor: 'rgba(39, 14, 179, 0.4)', borderRadius: 20}}>{each.username}</Text>
+                                    <FontAwesome name="location-arrow" size={20} color={each.latitude && each.longitude? 'rgba(0, 255, 72, 1)': 'rgb(159, 11, 11)'} style={{
+                                        padding: 15
+                                    }} />
                                 </View>
                             </Pressable>
                         )
                     })
                 }
-                {loadNew? <ActivityIndicator size={60}/>:  newPeople.map((each, index)=>{
-                    return(
-                        <Pressable
-                            style={{width: '100%', marginBottom: 10}}
-                            key={index}
-                        >
-                            <View style={[styles.currentFreind, {backgroundColor: colors.textColor}]}>
-                                <AvatarComp size={50} attributes={each.profile}/>
-                                <Text style={{fontSize: 18, color: colors.background}}>{each.username}</Text>
-                                <TouchableOpacity
-                                    onPress={()=>{
-                                        freindRequest(each.username)
-                                    }}
-                                >
-                                    <Text style={{ fontWeight: 300, color: colors.background, padding: 15, backgroundColor: 'rgba(0, 255, 85, 0.4)', borderRadius: 20}}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </Pressable>
-                    )
-                })}
 
                 </ScrollView>
             </Animated.View>
@@ -452,7 +334,7 @@ export default function MapScreen(){
                             selectPerson(each)
                             toggleLike(index)
                         }}>
-                            <AvatarComp size={50} attributes={each.profile}/>
+                            <AvatarComp size={50} attributes={each.profile} streak={each.streak}/>
                         </Pressable>
                     )
                 })}
@@ -478,34 +360,34 @@ export default function MapScreen(){
                 moveOnMarkerPress={false}
                 ref={mapRef}
             >
-                <Marker
-                    coordinate={{
-                        latitude: -15.007,
-                        longitude: -140.0000,
-                    }}
-                >
-                    <Text style={{color: 'white'}}>No location found</Text>
-                </Marker>
-
 
                 {freinds.map((each, index)=>{
                     return(
                         <Marker
                             ref={(ref) => markRefs.current[each.username] = ref}
-                            onPress={()=>{
-                                selectPerson(each)
-                                toggleLike(index)
-                            }}
                             key={index}
                             coordinate={{
                                 latitude: each.latitude? each.latitude: -15.0000,
                                 longitude: each.longitude? each.longitude: -140.0000,
                             }}
                         >
-                            <AvatarComp size={50} attributes={each.profile} />
+                            {each.latitude && each.longitude? 
+                            <View
+                                onPress={()=>{
+                                    selectPerson(each)
+                                    toggleLike(index)
+                                }}
+                            >
+                                <AvatarComp size={50} attributes={each.profile} streak={each.streak}/>
+                            </View>:
+                            <Text style={{color: 'white'}}>No location found</Text>}
                             
                             <Callout
                                 style={styles.callout}
+                                onPress={()=>{
+                                    const userRef = markRefs.current[each.username]
+                                    userRef?.hideCallout()
+                                }}
                             >
                             <View style={styles.callout}>
                                 <Text style={styles.calloutUsername}>{each.username}</Text>
@@ -519,12 +401,13 @@ export default function MapScreen(){
                                             <>
                                             <View style={styles.imageRow}>
                                                 <Image
-                                                    resizeMode="cover"
+                                                    contentFit="cover"
                                                     style={[styles.attemptIMG, {
                                                         width: each.imgurl != each.attemptimg? 130: 250,
                                                         height: each.imgurl != each.attemptimg? 200: 330
                                                     }]}
                                                     source={{ uri: each.imgurl }}
+                                                    cachePolicy={"memory-disk"}
                                                 />
                                                 
                                                 {(!each.attemptimg.endsWith("default") && (each.attemptimg != each.imgurl))?(
@@ -615,7 +498,7 @@ function createStyles(colors) {
         },
         likeBtn: {
             position: 'absolute',
-            top: 15,
+            top: 20,
             right: 15,
             zIndex: 10,
             backgroundColor: 'rgb(13, 132, 53)',

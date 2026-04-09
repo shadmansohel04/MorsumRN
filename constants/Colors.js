@@ -121,3 +121,18 @@ export const person = {
 
 
 }
+
+export const theme = {
+    dark:{
+        titleText: "#FF8762",
+        boldText: "#FFF5E1",
+        subtleText: "#98907F",
+        background: "#0d0f0c",
+        labelText: "rgb(227, 231, 222)",
+    },
+    font:{
+        title: "Plus Jakarta Sans",
+        capLabel: "Inter",
+        subText: "Be Vietnam Pro"
+    }
+}

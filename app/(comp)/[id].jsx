@@ -1,6 +1,5 @@
 import Entypo from '@expo/vector-icons/Entypo';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
@@ -30,7 +29,7 @@ export default function oneCard(){
         try {
             const url = `${backendURI}/profile/deleteLiked`
             const jwt = await AsyncStorage.getItem("jwt")
-            const response = await axios.delete(url,{
+            const raw = await fetch(url,{
                 data:{
                     recipeID: item.recipeID
                 },

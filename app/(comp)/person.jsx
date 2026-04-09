@@ -1,13 +1,14 @@
 import Avatar, { genConfig, Sex } from "@zamplyy/react-native-nice-avatar";
-import { View, StyleSheet, Image } from "react-native";
+import { View, StyleSheet, Image, Text } from "react-native";
 import { person } from "../../constants/Colors";
 import male1 from "../../assets/hair1.png";
 import male2 from "../../assets/hair2.png";
 import male3 from "../../assets/hair3.png";
 import male4 from "../../assets/hair4.png";
+import Fontisto from '@expo/vector-icons/Fontisto';
 
 export default function AvatarComp(props) {
-    const { attributes, size } = props;
+    const { attributes, size, streak = 0 } = props;
     const styles = createStyles(size);
 
     if (
@@ -51,55 +52,96 @@ export default function AvatarComp(props) {
     });
 
     const renderHair = () => {
-    const tintColor = safeGet(person.hairColor, attributes.hairColor)?.rgb;
-    const noHat = attributes.hatStyle === 0;
+        const tintColor = safeGet(person.hairColor, attributes.hairColor)?.rgb;
+        const noHat = attributes.hatStyle === 0;
 
-    return (
-        <>
-            {/* COLOR ON NORMAL MALE */}
-            <Image
-                source={male1}
-                style={[
-                styles.hair,
-                styles.hair1,
-                { tintColor, opacity: noHat && attributes.hairStyle === 1 ? 1 : 0 },
-                ]}
-            />
-            {/* COLOR ON MOHALK */}
-            <Image
-                source={male2}
-                style={[
-                styles.hair,
-                styles.hair2,
-                { tintColor, opacity: noHat && attributes.hairStyle === 2 ? 1 : 0 },
-                ]}
-            />
-            {/* AFRO */}
-            <Image
-                source={male3}
-                style={[
-                styles.hair,
-                styles.hair3,
-                { tintColor, opacity: noHat && attributes.hairStyle === 5 ? 1 : 0 },
-                ]}
-            />
-            {/* SPIKEY */}
-            <Image
-                source={male4}
-                style={[
-                styles.hair,
-                styles.hair4,
-                { tintColor, opacity: noHat && attributes.hairStyle === 6 ? 1 : 0 },
-                ]}
-            />
-        </>
-    );
+        return (
+            <>
+                {/* COLOR ON NORMAL MALE */}
+                <Image
+                    source={male1}
+                    style={[
+                    styles.hair,
+                    styles.hair1,
+                    { tintColor, opacity: noHat && attributes.hairStyle === 1 ? 1 : 0 },
+                    ]}
+                />
+                {/* COLOR ON MOHALK */}
+                <Image
+                    source={male2}
+                    style={[
+                    styles.hair,
+                    styles.hair2,
+                    { tintColor, opacity: noHat && attributes.hairStyle === 2 ? 1 : 0 },
+                    ]}
+                />
+                {/* AFRO */}
+                <Image
+                    source={male3}
+                    style={[
+                    styles.hair,
+                    styles.hair3,
+                    { tintColor, opacity: noHat && attributes.hairStyle === 5 ? 1 : 0 },
+                    ]}
+                />
+                {/* SPIKEY */}
+                <Image
+                    source={male4}
+                    style={[
+                    styles.hair,
+                    styles.hair4,
+                    { tintColor, opacity: noHat && attributes.hairStyle === 6 ? 1 : 0 },
+                    ]}
+                />
+            </>
+        );
     };
 
 
     return (
         <View pointerEvents="none" style={{ width: size, height: size }}>
             {renderHair()}
+                {streak > 0 &&
+                    <View
+                        style={{
+                            position: 'absolute',
+                            top: '-4%',
+                            right: '1%',
+                            width: size / 3,
+                            height: size / 2.5,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 6
+                        }}
+                    >
+                        <Fontisto
+                            name="fire"
+                            size={size / 2.5}
+                            color="rgba(247, 187, 69, 1)"
+                            style={{
+                                position: 'absolute',
+                                bottom: '9%'
+                            }}
+                        />
+                        <Text
+                            style={{
+                                color: 'black',
+                                fontSize: size / 4,
+                                fontWeight: '800',
+                                zIndex: 2,
+                                paddingLeft: '3%',
+                                paddingRight: '3%'
+                            }}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                        >
+                            {streak}
+                        </Text>
+                    </View>
+
+
+                }
+            
             <Avatar size="100%" style={{ marginBottom: 15, zIndex: 1 }} {...config} />
         </View>
     );

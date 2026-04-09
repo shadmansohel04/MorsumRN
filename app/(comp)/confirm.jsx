@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { Image, Text, View, TouchableOpacity, ScrollView, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
-import { Colors } from "../../constants/Colors";
-import { useRouter } from 'expo-router';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from 'expo-file-system';
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants"
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import * as FileSystem from 'expo-file-system';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Colors } from "../../constants/Colors";
 
 const backendURI = Constants.expoConfig.extra.backendURI
 
@@ -28,12 +28,15 @@ export default function Ingredients() {
                 return `${each.quantity} ${each.unit} of ${each.name}`
             })
             const jwt = await AsyncStorage.getItem("jwt")
-            const fileInfo = await FileSystem.getInfoAsync(img);
+            const profile = await AsyncStorage.getItem("profile")
+            const parsedProfile = await JSON.parse(profile)
+            const fileInfo = new FileSystem.File(img);
+
             const form = new FormData();
             const bodyLike = {
                 recipeName: foodName,
                 ingredients: newIng,
-                steps: steps
+                steps: steps,
             }
 
             form.append("frame", {
@@ -41,7 +44,8 @@ export default function Ingredients() {
                 name: "image.jpg",
                 type: "image/jpeg"
             });
-            form.append("body", JSON.stringify(bodyLike))            
+            form.append("body", JSON.stringify(bodyLike))
+            form.append("Streak", parsedProfile.streak || 0)
             const response = await fetch(`${backendURI}/recipe/uploadRecipe`, {
                 method: "POST",
                 headers: {
@@ -52,13 +56,14 @@ export default function Ingredients() {
             });
 
             const result = await response.json();
-            console.log(result)
             if(result && result.success == true){
                 return router.replace("/(tabs)")
             }
+            setLoading(false)
             throw Error("Failed to upload")
         } catch (error) {
             console.error("Upload error:", error);
+            alert("Failed to Upload")
             return router.replace("/")
         }
     };

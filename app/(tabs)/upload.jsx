@@ -20,7 +20,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import placeholder from "../../assets/placeHolder.png";
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
 import Constants from "expo-constants"
 
 const foodMSUri = Constants.expoConfig.extra.foodMSUri
@@ -73,10 +72,9 @@ export default function uploadScreen() {
     try {
       if (!uri) throw new Error("No image URI provided to getName");
 
-      const fileInfo = await FileSystem.getInfoAsync(uri);
       const form = new FormData();
       form.append("frame", {
-        uri: fileInfo.uri,
+        uri: uri, // just use the uri you already have
         name: "image.jpg",
         type: "image/jpeg",
       });
@@ -84,15 +82,18 @@ export default function uploadScreen() {
       const raw = await fetch(GET_NAME_URL, {
         method: "POST",
         body: form,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
-      const response = await raw.json()
+
+      const response = await raw.json();
 
       if (!response.success) {
         throw new Error(`Name API returned ${response.status}`);
       }
 
-      const detected =
-        response?.class;
+      const detected = response?.class;
 
       if (detected && detected.trim().length > 0) {
         setName(detected.trim());
@@ -109,6 +110,7 @@ export default function uploadScreen() {
       setNameLoading(false);
     }
   };
+
 
   if (!permission) {
     return <View />;
@@ -170,7 +172,7 @@ export default function uploadScreen() {
   async function pickImage() {
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"] ,
         allowsEditing: false,
         aspect: [4, 3],
         quality: 1,
