@@ -1,24 +1,26 @@
 import { Tabs } from 'expo-router';
-import { StatusBar, StyleSheet, useColorScheme, Platform } from 'react-native';
+import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 export default function TabsLayout() {
   const colorScheme = useColorScheme();
-  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
-  const styles = createStyles(colors);
+  const isDark = colorScheme === 'dark';
+
+  const colors = isDark ? Colors.dark : Colors.light;
+  const styles = createStyles(colors, isDark);
 
   return (
     <>
       <StatusBar
-        translucent={true}
+        translucent
         backgroundColor="transparent"
-        barStyle={colorScheme === "light"? "light-content": "dark-content"} 
+        barStyle={isDark ? "light-content" : "dark-content"}
       />
 
       <Tabs
-        initialRouteName='(home)'
+        initialRouteName="(home)"
         screenOptions={{
           headerShown: false,
           tabBarStyle: styles.tabBar,
@@ -43,7 +45,7 @@ export default function TabsLayout() {
             title: 'PANTRY',
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons name="fridge" color={color} size={size} />
-            )
+            ),
           }}
         />
 
@@ -53,19 +55,9 @@ export default function TabsLayout() {
             title: 'ADD',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="add-circle" color={color} size={size} />
-            )
+            ),
           }}
         />
-
-        {/* <Tabs.Screen
-          name="(messagestack)"
-          options={{
-            title: 'CHATS',
-            tabBarIcon: ({ color, size }) => (
-              <Entypo name="message" color={color} size={size} />
-            )
-          }}
-        /> */}
 
         <Tabs.Screen
           name="(profile)"
@@ -73,21 +65,20 @@ export default function TabsLayout() {
             title: 'PROFILE',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person" size={size} color={color} />
-            )
+            ),
           }}
         />
-
       </Tabs>
     </>
   );
 }
 
-function createStyles(colors) {
+function createStyles(colors, isDark) {
   return StyleSheet.create({
     tabBar: {
-      backgroundColor: '#151714', 
+      backgroundColor: colors.background ?? (isDark ? '#151714' : '#ffffff'),
       borderTopColor: 'transparent',
-      elevation: 0, 
+      elevation: 0,
       height: 65,
       paddingBottom: 5,
       paddingTop: 5,

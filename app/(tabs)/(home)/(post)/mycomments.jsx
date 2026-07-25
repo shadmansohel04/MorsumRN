@@ -1,185 +1,229 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, useColorScheme } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from "expo-constants";
+import { useRouter } from 'expo-router';
+import { DARKTHEME, LIGHTTHEME } from "../../../../constants/Colors";
 
-const DUMMY_AVATAR = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
+const backendURI = Constants.expoConfig.extra.backendURI;
 
-const MOCK_REACTIONS_DATA = [
-  {
-    id: '1',
-    label: "Chef's Kiss",
-    icon: "chef-hat",
-    color: "#FF8762",
-    count: 12,
-    users: [DUMMY_AVATAR, DUMMY_AVATAR, DUMMY_AVATAR],
-  },
-  {
-    id: '3',
-    label: "Hidden Gem",
-    icon: "diamond-outline",
-    color: "#62d27c",
-    count: 6,
-    users: [DUMMY_AVATAR, DUMMY_AVATAR],
-  },
-  {
-    id: '4',
-    label: "Spicy Hot",
-    icon: "fire",
-    color: "#FF4433",
-    count: 45,
-    users: [DUMMY_AVATAR, DUMMY_AVATAR, DUMMY_AVATAR],
-  },
-  {
-    id: '5',
-    label: "Mid / Meh",
-    icon: "moped",
-    color: "#999999",
-    count: 14,
-    users: [DUMMY_AVATAR, DUMMY_AVATAR],
-  },
-  {
-    id: '6',
-    label: "Yikes...",
-    icon: "emoticon-dead-outline",
-    color: "#777777",
-    count: 9,
-    users: [DUMMY_AVATAR],
-  },
-  {
-    id: '7',
-    label: "Overrated",
-    icon: "thumb-down-outline",
-    color: "#555555",
-    count: 11,
-    users: [DUMMY_AVATAR, DUMMY_AVATAR],
-  },
-];
+export default function ReactionTile({ date }) {
+  const [allData, setAll] = useState([]);
+  const [first, setFirst] = useState([]);
+  const router = useRouter();
 
-export default function ReactionsGrid({ data = MOCK_REACTIONS_DATA }){
+  const isdark = useColorScheme() === "dark";
+  const THEME = isdark ? DARKTHEME : LIGHTTHEME;
+  const styles = createStyles(THEME, isdark);
+
+  useEffect(() => {
+    const refresh = async () => {
+      try {
+        const jwt = await AsyncStorage.getItem("jwt");
+        const raw = await fetch(`${backendURI}/Post/getPostReactions`, {
+          method: "POST",
+          headers: {
+            "Authorization": jwt,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ showdate: date })
+        });
+
+        if (!raw.ok) return;
+
+        const response = await raw.json();
+        if (response?.allreactions && response?.first) {
+          setAll(response.allreactions);
+          setFirst(response.first);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    refresh();
+  }, []);
+
+  const extraCount = allData.length - first.length;
+
   return (
-    <View style={styles.reactionsSection}>
+    <Pressable
+      onPress={() => {
+        router.push({
+          pathname: "allComments",
+          params: { data: JSON.stringify(allData) }
+        });
+      }}
+      style={styles.reactionsSection}
+    >
       <Text style={styles.sectionHeader}>REACTIONS</Text>
-      
-      <View style={styles.reactionsGrid}>
-        {data.map((item) => {
-          const extraCount = item.count - item.users.length;
-          
-          return (
-            <View key={item.id} style={styles.reactionCard}>
-              
-              <View style={styles.cardHeader}>
-                <View style={styles.labelWrapper}>
-                  <MaterialCommunityIcons name={item.icon} size={16} color={item.color} />
-                  <Text style={styles.reactionLabel} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                </View>
-                <Text style={styles.reactionCount}>{item.count}</Text>
-              </View>
 
-              <View style={styles.avatarsRow}>
-                {item.users.map((url, index) => (
-                  <Image 
-                    key={index}
-                    source={{ uri: url }} 
-                    style={[
-                      styles.miniAvatar, 
-                      index > 0 && { marginLeft: -10 }
-                    ]} 
-                  />
-                ))}
-                
-                {extraCount > 0 && (
-                  <View style={[styles.extraBubble, { marginLeft: -10 }]}>
-                    <Text style={styles.extraText}>+{extraCount}</Text>
-                  </View>
-                )}
-              </View>
-
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconWrapper}>
+              <MaterialCommunityIcons name="silverware-fork-knife" size={20} color={THEME.accent} />
             </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-};
 
-const styles = StyleSheet.create({
-  reactionsSection: {
-    paddingHorizontal: 18,
-    paddingBottom: 40,
-    marginTop: 10,
-  },
-  sectionHeader: {
-    color: "rgba(255,255,255,0.35)",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 2.6,
-    marginBottom: 16,
-  },
-  reactionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  reactionCard: {
-    width: "48%",
-    backgroundColor: "#141612",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  labelWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 6,
-  },
-  reactionLabel: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-    flexShrink: 1, 
-  },
-  reactionCount: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 12,
-    fontWeight: "700",
-    marginLeft: 4,
-  },
-  avatarsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  miniAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 2,
-    borderColor: "#141612",
-  },
-  extraBubble: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#22251F",
-    borderWidth: 2,
-    borderColor: "#141612",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  extraText: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 10,
-    fontWeight: "800",
-  }
-});
+            <View>
+              <Text style={styles.mainTitle}>Cravings</Text>
+              <Text style={styles.subTitle}>Community Response</Text>
+            </View>
+          </View>
+
+          <View style={styles.badgeWrapper}>
+            <Text style={styles.badgeText}>{allData.length} TOTAL</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBottom}>
+          <View style={styles.avatarsRow}>
+            {first.map((each, index) => (
+              <Image
+                key={index}
+                source={{ uri: each.avatarurl }}
+                style={[
+                  styles.avatar,
+                  index > 0 && { marginLeft: -12 }
+                ]}
+              />
+            ))}
+
+            <View style={[styles.plusBubble, { marginLeft: -12 }]}>
+              <Text style={styles.plusText}>+</Text>
+            </View>
+          </View>
+
+          <Text style={styles.summaryText}>
+            <Text style={styles.boldText}>+{extraCount} others</Text> are{"\n"}craving this
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function createStyles(THEME, isdark) {
+  return StyleSheet.create({
+    reactionsSection: {
+      paddingHorizontal: 18,
+      paddingBottom: 40,
+      marginTop: 10,
+    },
+
+    sectionHeader: {
+      color: THEME.textSoft,
+      opacity: isdark ? 0.35 : 0.6,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 2.6,
+      marginBottom: 16,
+    },
+
+    card: {
+      backgroundColor: THEME.surface,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: isdark
+        ? "rgba(255,255,255,0.05)"
+        : "rgba(0,0,0,0.06)",
+    },
+
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+
+    iconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: `${THEME.accent}22`,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+
+    mainTitle: {
+      color: THEME.text,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+
+    subTitle: {
+      color: THEME.textSoft,
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 0.5,
+    },
+
+    badgeWrapper: {
+      backgroundColor: `${THEME.accent}26`,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+    },
+
+    badgeText: {
+      color: THEME.accent,
+      fontSize: 11,
+      fontWeight: "800",
+    },
+
+    cardBottom: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 20,
+    },
+
+    avatarsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+
+    avatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: THEME.surface,
+    },
+
+    plusBubble: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: isdark ? "#2A2A2A" : "#E6E6E6",
+      borderWidth: 2,
+      borderColor: THEME.surface,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+
+    plusText: {
+      color: THEME.textSoft,
+      fontSize: 12,
+      fontWeight: "800",
+    },
+
+    summaryText: {
+      color: THEME.textSoft,
+      fontSize: 13,
+      marginLeft: 12,
+      lineHeight: 18,
+    },
+
+    boldText: {
+      color: THEME.text,
+      fontWeight: "700",
+    },
+  });
+}

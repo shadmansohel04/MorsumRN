@@ -1,19 +1,11 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Skeleton } from 'moti/skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const THEME = {
-  bg: "#0d0f0c",
-  accent: "#FF8762",
-  surface: "#141612",
-  bottom: "#1d201c",
-  text: "#FFFFFF",
-  textSoft: "#E3E7DE",
-};
+import { DARKTHEME, LIGHTTHEME } from '../../../../constants/Colors';
 
 const RADII = {
   sm: 8,
@@ -34,10 +26,15 @@ export default function YesterdaysSpotlight({
   time,
   quantity,  
   homemade,
+  date
 }) {
   const [username, setUsername] = useState("")
   const [avatar, setAvatar] = useState("")
   const router = useRouter()
+  const isdark = useColorScheme() === "dark"
+  const THEME = isdark? DARKTHEME: LIGHTTHEME
+  const styles = createStyles(THEME)
+
   let postData = {
     title: "SPOTLIGHT",
     heroImage: imageUri,
@@ -53,7 +50,8 @@ export default function YesterdaysSpotlight({
     badges,
     homemade,
     name: username,
-    avatar: avatar
+    avatar: avatar,
+    date
   }
 
   useFocusEffect(
@@ -123,7 +121,7 @@ export default function YesterdaysSpotlight({
           style={styles.yScrim}
           colors={[
             'transparent',
-            THEME.bg,
+            THEME.bottom,
           ]}
           locations={[0, 0.5]}
         />
@@ -145,75 +143,79 @@ export default function YesterdaysSpotlight({
   );
 }
 
-const styles = StyleSheet.create({
-  yWrap: {
-    marginTop: 18,
-  },
-  yHeaderRow: {
-    marginHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  yHeaderText: {
-    color: THEME.textSoft,
-    opacity: 0.5,
-    fontSize: 11,
-    fontWeight: "700",
-    fontFamily: "Inter-Bold",
-    letterSpacing: 11 * 0.15,
-  },
-  yCard: {
-    marginTop: 14,
-    marginHorizontal: 16,
-    borderRadius: RADII.lg,
-    overflow: "hidden",
-    backgroundColor: THEME.surface,
-    position: "relative"
-  },
-  yImage: {
-    width: "100%",
-    aspectRatio: 4 / 3,
-    backgroundColor: "#2A2D26",
-  },
-  yScrim: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "35%",
-  },
-  yOverlay: {
-    position: "absolute",
-    left: 14,
-    right: 14,
-    bottom: 14,
-  },
-  yPillsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  yActivePill: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: RADII.pill,
-    backgroundColor: THEME.accent,
-  },
-  yActivePillText: {
-    color: "#1A120F",
-    fontSize: 10,
-    fontWeight: "900",
-    fontFamily: "Inter-ExtraBold",
-    letterSpacing: 0.6,
-  },
-  yCaption: {
-    marginTop: 10,
-    color: THEME.text,
-    fontSize: 20,
-    fontWeight: "700",
-    fontFamily: "PlusJakartaSans-Bold",
-    lineHeight: 26,
-    width: "92%",
-  },
-});
+function createStyles(THEME){
+  return(
+    StyleSheet.create({
+      yWrap: {
+        marginTop: 18,
+      },
+      yHeaderRow: {
+        marginHorizontal: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+      },
+      yHeaderText: {
+        color: THEME.textSoft,
+        opacity: 0.5,
+        fontSize: 11,
+        fontWeight: "700",
+        fontFamily: "Inter-Bold",
+        letterSpacing: 11 * 0.15,
+      },
+      yCard: {
+        marginTop: 14,
+        marginHorizontal: 16,
+        borderRadius: RADII.lg,
+        overflow: "hidden",
+        backgroundColor: THEME.surface,
+        position: "relative"
+      },
+      yImage: {
+        width: "100%",
+        aspectRatio: 4 / 3,
+        backgroundColor: "#2A2D26",
+      },
+      yScrim: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: "35%",
+      },
+      yOverlay: {
+        position: "absolute",
+        left: 14,
+        right: 14,
+        bottom: 14,
+      },
+      yPillsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+      },
+      yActivePill: {
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: RADII.pill,
+        backgroundColor: THEME.accent,
+      },
+      yActivePillText: {
+        color: "#1A120F",
+        fontSize: 10,
+        fontWeight: "900",
+        fontFamily: "Inter-ExtraBold",
+        letterSpacing: 0.6,
+      },
+      yCaption: {
+        marginTop: 10,
+        color: THEME.text,
+        fontSize: 20,
+        fontWeight: "700",
+        fontFamily: "PlusJakartaSans-Bold",
+        lineHeight: 26,
+        width: "92%",
+      },
+    })
+  )
+}

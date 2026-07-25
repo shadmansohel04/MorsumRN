@@ -6,29 +6,22 @@ import {
   ScrollView, 
   Image, 
   Dimensions, 
-  Pressable 
+  Pressable,
+  useColorScheme
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { oneMonthFormat } from '../../../../constants/dateHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from "expo-constants";
-const backendURI = Constants.expoConfig.extra.backendURI;
+import { DARKTHEME, LIGHTTHEME } from "../../../../constants/Colors";
 
-// GET CALL USING TOKEN, MONTH YEAR
+const backendURI = Constants.expoConfig.extra.backendURI;
 
 const { width } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 16;
 const GAP = 10;
 const ITEM_WIDTH = (width - (HORIZONTAL_PADDING * 2) - (GAP * 2)) / 3;
-
-const THEME = {
-  bg: '#111211',
-  accent: '#FF7B54',
-  text: '#FFFFFF',
-  textMuted: '#8E8E8E',
-  navBg: '#1C1D1C',
-};
 
 function getMonthInt(month) {
   const months = {
@@ -50,14 +43,19 @@ function getMonthInt(month) {
 }
 
 export default function HistoryScreen() {
-  const router = useRouter()
-  const {data} = useLocalSearchParams()
-  const parsedData = JSON.parse(data)
-  const year = parsedData.year
-  const month = parsedData.month
-  const [DUMMY_DATA, set_DUMMY_DATA] = useState([])
-  const [avatarImage, setAvatar] = useState(null)
-  const [username, setUsername] = useState(null)
+  const isdark = useColorScheme() === "dark";
+  const THEME = isdark ? DARKTHEME : LIGHTTHEME;
+  const styles = createStyles(THEME, isdark);
+
+  const router = useRouter();
+  const {data} = useLocalSearchParams();
+  const parsedData = JSON.parse(data);
+  const year = parsedData.year;
+  const month = parsedData.month;
+  
+  const [DUMMY_DATA, set_DUMMY_DATA] = useState([]);
+  const [avatarImage, setAvatar] = useState(null);
+  const [username, setUsername] = useState(null);
   
   const getURL = async()=>{
     try {
@@ -74,7 +72,6 @@ export default function HistoryScreen() {
 
   useEffect(()=>{
     const pull = async()=>{
-      
       try {
         const m = getMonthInt(month)
         const jwt = await AsyncStorage.getItem("jwt")
@@ -101,7 +98,7 @@ export default function HistoryScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable hitSlop={10} onPress={()=>{router.back()}}>
-          <Feather name="arrow-left" size={24} color={THEME.accent} />
+          <Feather name="arrow-left" size={24} color={THEME.accent || '#FF7B54'} />
         </Pressable>
         <Text style={styles.headerTitle}>{oneMonthFormat(month, year)}</Text>
       </View>
@@ -123,10 +120,8 @@ export default function HistoryScreen() {
                 caption: item.caption,
                 badges: item.badges,
                 avatar: item.avatarurl,
-                name: item.username || "Guest",
+                name: username || "Guest",
                 meta: item.date,
-                name: username,
-                avatar: avatarImage,
                 homemade: item.homemade,
                 title: item.createdAt.slice(0, 10),
                 individualData: {
@@ -149,7 +144,11 @@ export default function HistoryScreen() {
               />
               {item.date != null && (
                 <View style={styles.badgeContainer}>
-                  <MaterialCommunityIcons name="star" size={14} color="#1A1A1A" />
+                  <MaterialCommunityIcons 
+                    name="star" 
+                    size={14} 
+                    color={isdark ? "#1A1A1A" : "#FFFFFF"} 
+                  />
                 </View>
               )}
             </Pressable>
@@ -157,7 +156,7 @@ export default function HistoryScreen() {
         </View>
 
         <View style={styles.endMarkerContainer}>
-          <Feather name="calendar" size={28} color={THEME.textMuted} style={styles.endIcon} />
+          <Feather name="calendar" size={28} color={THEME.textSoft || '#8E8E8E'} style={styles.endIcon} />
           <Text style={styles.endText}>END OF HISTORY</Text>
         </View>
       </ScrollView>
@@ -166,91 +165,89 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.bg,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: THEME.text,
-    marginLeft: 16,
-    letterSpacing: -0.5,
-  },
-
-  subtitleContainer: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 24,
-  },
-  subtitleText: {
-    color: THEME.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  subtitleUnderline: {
-    width: 45,
-    height: 2,
-    backgroundColor: THEME.accent,
-  },
-
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: GAP,
-  },
-  gridItem: {
-    width: ITEM_WIDTH,
-    height: ITEM_WIDTH,
-    marginBottom: GAP,
-    borderRadius: 16,
-    backgroundColor: '#222',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-  },
-  badgeContainer: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: THEME.accent,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  endMarkerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 40,
-  },
-  endIcon: {
-    marginBottom: 12,
-    opacity: 0.6,
-  },
-  endText: {
-    color: THEME.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-    opacity: 0.6,
-  },
-});
+function createStyles(THEME, isdark) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: THEME.bg || (isdark ? '#111211' : '#FFFFFF'),
+    },
+    scrollContent: {
+      paddingBottom: 40,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: HORIZONTAL_PADDING,
+      paddingTop: 16,
+      paddingBottom: 24,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: THEME.text,
+      marginLeft: 16,
+      letterSpacing: -0.5,
+    },
+    subtitleContainer: {
+      paddingHorizontal: HORIZONTAL_PADDING,
+      marginBottom: 24,
+    },
+    subtitleText: {
+      color: THEME.textSoft || '#8E8E8E',
+      fontSize: 12,
+      fontWeight: '600',
+      letterSpacing: 2,
+      marginBottom: 8,
+    },
+    subtitleUnderline: {
+      width: 45,
+      height: 2,
+      backgroundColor: THEME.accent || '#FF7B54',
+    },
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: HORIZONTAL_PADDING,
+      gap: GAP,
+    },
+    gridItem: {
+      width: ITEM_WIDTH,
+      height: ITEM_WIDTH,
+      marginBottom: GAP,
+      borderRadius: 16,
+      backgroundColor: THEME.surface || (isdark ? '#222' : '#F0F0F0'),
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 14,
+    },
+    badgeContainer: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      backgroundColor: THEME.accent || '#FF7B54',
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    endMarkerContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 40,
+    },
+    endIcon: {
+      marginBottom: 12,
+      opacity: 0.6,
+    },
+    endText: {
+      color: THEME.textSoft || '#8E8E8E',
+      fontSize: 12,
+      fontWeight: '600',
+      letterSpacing: 1.5,
+      opacity: 0.6,
+    },
+  });
+}

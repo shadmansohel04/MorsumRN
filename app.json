@@ -77,7 +77,7 @@
       "eas": {
         "projectId": "5475a986-e133-4250-b4c0-ea918d089135"
       },
-      "backendURI": "http://192.168.68.81:8080",
+      "backendURI": "https://foodskitest.onrender.com",
       "foodMSUri": "http://34.130.248.52:3000"
     }
   }

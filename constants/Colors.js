@@ -136,3 +136,23 @@ export const theme = {
         subText: "Be Vietnam Pro"
     }
 }
+
+export const DARKTHEME = {
+  bg: "#0d0f0c",
+  accent: "#FF8762",
+  accentGreen: "#7EDC84",
+  surface: "#141612",
+  bottom: "#1d201c",
+  text: "#FFFFFF",
+  textSoft: "#E3E7DE",
+};
+
+export const LIGHTTHEME = {
+  bg: "#F7F8F5",
+  accent: "#FF8762",
+  accentGreen: "#7EDC84",
+  surface: "#FFFFFF",
+  bottom: "#E6E9E2",
+  text: "#1A1D18",
+  textSoft: "#5F665A",
+};

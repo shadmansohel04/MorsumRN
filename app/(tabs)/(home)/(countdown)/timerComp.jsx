@@ -4,21 +4,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Skeleton } from "moti/skeleton";
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 const backendURI = Constants.expoConfig.extra.backendURI
 import { Dimensions } from 'react-native';
-
+import { DARKTHEME, LIGHTTHEME } from "../../../../constants/Colors";
 const { width, height } = Dimensions.get('window');
-
-const THEME = {
-  bg: "#0d0f0c",
-  accent: "#FF8762",
-  accentGreen: "#7EDC84",
-  surface: "#141612",
-  bottom: "#1d201c",
-  text: "#FFFFFF",
-  textSoft: "#E3E7DE",
-};
 
 const RADII = {
   sm: 8,
@@ -26,9 +16,6 @@ const RADII = {
   lg: 24,
   pill: 100,
 };
-
-const GRADIENTORANGE = ["#2A1710", "#1A120E", "#1A120E", "#1A120E"];
-const GRADIENTGREEN = ["#182e21", "#111b16", "#0E1411", "#080a09"];
 
 function getNextUtcMidnightMs() {
   const from = new Date();
@@ -56,6 +43,17 @@ export default function TimerComponent({flag, optional}) {
   const [targetMs, setTargetMs] = useState(getNextUtcMidnightMs());
   const [remainingMs, setRemainingMs] = useState(targetMs - Date.now());
   const [completed, setCompleted] = useState(optional === "true"? true: null);
+  const isdark = useColorScheme() === "dark"
+  const THEME = isdark? DARKTHEME: LIGHTTHEME
+  const styles = createStyles(THEME)
+
+  const GRADIENTORANGE = isdark
+    ? ["#2A1710", "#1A120E", "#1A120E", "#1A120E"]
+    : ["#FFD6C7", "#FFE4DA", "#FFF1EB", "#FFFFFF"];
+
+  const GRADIENTGREEN = isdark
+    ? ["#182e21", "#111b16", "#0E1411", "#080a09"]
+    : ["#CDEED8", "#E0F6E8", "#F2FBF5", "#FFFFFF"];
 
   const refresh = async (force = false) => {
     try {
@@ -156,34 +154,38 @@ export default function TimerComponent({flag, optional}) {
   );
 }
 
-const styles = StyleSheet.create({
-  spotlight: {
-    marginTop: 16,
-    marginHorizontal: 16,
-    borderRadius: RADII.lg,
-    overflow: "hidden",
-    justifyContent: 'center'
-  },
-  spotlightLabel: {
-    textAlign: "center",
-    color: THEME.textSoft,
-    opacity: 0.5,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-  },
-  timer: {
-    marginTop: 12,
-    textAlign: "center",
-    fontSize: 44,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  spotlightHint: {
-    marginTop: 8,
-    textAlign: "center",
-    color: THEME.textSoft,
-    opacity: 0.7,
-    fontSize: 14,
-  },
-});
+function createStyles(THEME){
+  return(
+    StyleSheet.create({
+      spotlight: {
+        marginTop: 16,
+        marginHorizontal: 16,
+        borderRadius: RADII.lg,
+        overflow: "hidden",
+        justifyContent: 'center'
+      },
+      spotlightLabel: {
+        textAlign: "center",
+        color: THEME.textSoft,
+        opacity: 0.5,
+        fontSize: 11,
+        fontWeight: "700",
+        letterSpacing: 1.5,
+      },
+      timer: {
+        marginTop: 12,
+        textAlign: "center",
+        fontSize: 44,
+        fontWeight: "800",
+        letterSpacing: 1,
+      },
+      spotlightHint: {
+        marginTop: 8,
+        textAlign: "center",
+        color: THEME.textSoft,
+        opacity: 0.7,
+        fontSize: 14,
+      },
+    })
+  )
+}

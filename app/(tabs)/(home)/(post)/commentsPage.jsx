@@ -3,177 +3,281 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
-  Dimensions,
+  ImageBackground,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from "expo-constants";
+import { DARKTHEME, LIGHTTHEME } from "../../../../constants/Colors";
 
-const THEME = {
-  bg: "#0d0f0c",
-  accent: "#FF8762",
-  surface: "#141612",
-  bottom: "#1d201c",
-  text: "#FFFFFF",
-  textSoft: "#E3E7DE",
-};
+const backendURI = Constants.expoConfig.extra.backendURI;
 
-const REACTIONS = [
-  { id: '1', label: "Chef's Kiss", icon: 'chef-hat', active: false },
-  { id: '3', label: 'Hidden Gem', icon: 'diamond-outline', active: false },
-  { id: '4', label: 'Spicy Hot', icon: 'fire', active: false },
-  { id: '5', label: 'Mid / Meh', icon: 'moped', active: false },
-  { id: '6', label: 'Yikes...', icon: 'emoticon-dead-outline', active: false },
-  { id: '7', label: 'Overrated', icon: 'thumb-down-outline', active: false },
-];
+const SLIDER_HEIGHT = 350;
+const THUMB_SIZE = 56;
+const BUBBLE_HEIGHT = 44;
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 55) / 2; 
+export default function CraveMeterScreen() {
+  let { passIn } = useLocalSearchParams();
+  passIn = passIn ? JSON.parse(passIn) : null;
 
-export default function ReactionScreen() {
-  const [reactions, setReactions] = useState(REACTIONS)
-  const router = useRouter()
+  const [craveValue, setCraveValue] = useState(8);
+  const router = useRouter();
 
-  const handleClick = (accept) => {
+  const isdark = useColorScheme() === "dark";
+  const THEME = isdark ? DARKTHEME : LIGHTTHEME;
+  const styles = createStyles(THEME, isdark);
 
-    router.back()
-  }
+  const handleTouch = (y) => {
+    let val = Math.round(10 - (y / SLIDER_HEIGHT) * 10);
+    val = Math.max(0, Math.min(10, val));
+    setCraveValue(val);
+  };
+
+  const getFaceIcon = () => {
+    if (craveValue <= 2) return 'emoticon-sad';
+    if (craveValue <= 5) return 'emoticon-neutral';
+    if (craveValue <= 8) return 'emoticon-happy';
+    return 'emoticon-excited';
+  };
+
+  const handleDismiss = () => {
+    if (router.canGoBack()) router.back();
+  };
+
+  const handleAccept = async () => {
+    try {
+      const jwt = await AsyncStorage.getItem("jwt");
+      if (!passIn?.username) return;
+
+      await fetch(`${backendURI}/Post/makeReaction`, {
+        method: "PUT",
+        headers: {
+          "Authorization": jwt,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: passIn.username,
+          rating: craveValue
+        })
+      });
+
+      router.back();
+    } catch (error) {
+      console.log(error);
+      router.back();
+    }
+  };
+
+  const thumbPosition = SLIDER_HEIGHT - (craveValue / 10) * SLIDER_HEIGHT;
 
   return (
     <View style={styles.container}>
+      <ImageBackground
+        source={{ uri: passIn?.heroImage }}
+        style={StyleSheet.absoluteFillObject}
+        blurRadius={60}
+        imageStyle={{ opacity: isdark ? 0.3 : 0.2 }}
+      />
 
       <View style={styles.header}>
-        <Pressable onPress={()=>{handleClick(false)}}>
-          <MaterialCommunityIcons name="close" size={26} color={THEME.text} />
-        </Pressable>
-        <Pressable onPress={()=>{handleClick(true)}}>
-          <MaterialCommunityIcons name="check" size={26} color={THEME.text} />
-        </Pressable>
+        <Text style={styles.title}>Crave Meter</Text>
       </View>
 
-      <View style={styles.targetCard}>
-        <Image 
-          source="https://images.unsplash.com/photo-1617421753170-46511a8d73fc?auto=format&fit=crop&w=100&q=80" 
-          style={styles.avatar} 
-        />
-        <View>
-          <Text style={styles.reactingTo}>REACTING TO</Text>
-          <Text style={styles.foodName}>The Umami Bomb Burger</Text>
-        </View>
-      </View>
+      <View style={styles.sliderSection}>
+        <View style={styles.trackContainer}>
+          <View style={styles.trackBackground} />
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.gridContent}
-      >
-        <View style={styles.gridWrapper}>
-          {reactions.map((item, index) => (
-            <Pressable
-              onPress={() => {
-                setReactions((prev) => {
-                  const newReactions = [...prev];
-                  newReactions[index] = { 
-                    ...newReactions[index], 
-                    active: !newReactions[index].active 
-                  };
-                  return newReactions;
-                });
-              }}
-              key={item.id}
-              style={[
-                styles.card, 
-                item.active && { backgroundColor: THEME.accent }
-              ]}
-            >
-              {item.badge && <Text style={styles.badge}>{item.badge}</Text>}
-              
-              <MaterialCommunityIcons 
-                name={item.icon} 
-                size={32} 
-                color={item.active ? THEME.text : THEME.accent} 
+          <View
+            style={[
+              styles.trackFill,
+              { height: (craveValue / 10) * SLIDER_HEIGHT }
+            ]}
+          />
+
+          <View style={[styles.thumbContainer, { top: thumbPosition }]}>
+            <View style={styles.bubbleWrapper}>
+              <View style={styles.bubble}>
+                <Text style={styles.bubbleText}>{craveValue}</Text>
+              </View>
+              <View style={styles.bubbleTriangle} />
+            </View>
+
+            <View style={styles.thumb}>
+              <MaterialCommunityIcons
+                name={getFaceIcon()}
+                size={28}
+                color={THEME.accent}
               />
-              
-              <Text style={[
-                styles.cardLabel, 
-                { color: item.active ? THEME.text : THEME.textSoft }
-              ]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
+            </View>
+          </View>
+
+          <View
+            style={styles.touchOverlay}
+            onStartShouldSetResponder={() => true}
+            onResponderGrant={(e) => handleTouch(e.nativeEvent.locationY)}
+            onResponderMove={(e) => handleTouch(e.nativeEvent.locationY)}
+          />
         </View>
-      </ScrollView>
+      </View>
+
+      <View style={styles.footer}>
+        <Pressable style={styles.primaryButton} onPress={handleAccept}>
+          <Text style={styles.primaryButtonText}>Send Reaction</Text>
+        </Pressable>
+
+        <Pressable style={styles.dismissButton} onPress={handleDismiss}>
+          <Text style={styles.dismissButtonText}>Dismiss</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.bg,
-    paddingHorizontal: 20,
-    paddingTop: 25,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  targetCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#161815',
-    padding: 12,
-    borderRadius: 50,
-    marginBottom: 30,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  reactingTo: {
-    color: '#6e726b',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  foodName: {
-    color: THEME.text,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  gridContent: {
-    paddingBottom: 20,
-  },
-  gridWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  card: {
-    backgroundColor: THEME.surface,
-    width: CARD_WIDTH,
-    height: CARD_WIDTH * 1.15,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  badge: {
-    color: THEME.text,
-    fontWeight: '900',
-    fontSize: 22,
-    fontStyle: 'italic',
-    marginBottom: 8,
-  },
-  cardLabel: {
-    marginTop: 12,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+function createStyles(THEME, isdark) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: THEME.bg,
+      paddingHorizontal: 20,
+      justifyContent: 'space-between',
+      paddingTop: 60,
+      paddingBottom: 40,
+    },
+
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+
+    title: {
+      color: THEME.accent,
+      fontSize: 28,
+      fontWeight: '800',
+    },
+
+    sliderSection: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    trackContainer: {
+      height: SLIDER_HEIGHT,
+      width: 80,
+      alignItems: 'center',
+      position: 'relative',
+    },
+
+    trackBackground: {
+      position: 'absolute',
+      width: 16,
+      height: '100%',
+      backgroundColor: isdark ? "#3A2924" : "#E5D3CC",
+      borderRadius: 8,
+    },
+
+    trackFill: {
+      position: 'absolute',
+      bottom: 0,
+      width: 16,
+      backgroundColor: THEME.accentMuted || THEME.accent,
+      borderRadius: 8,
+    },
+
+    thumbContainer: {
+      position: 'absolute',
+      alignItems: 'center',
+      marginTop: -THUMB_SIZE / 2,
+      zIndex: 10,
+    },
+
+    thumb: {
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: THUMB_SIZE / 2,
+      backgroundColor: THEME.surface,
+      borderWidth: 2,
+      borderColor: isdark ? "#4A3229" : "#E0C2B8",
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isdark ? 0.5 : 0.15,
+      shadowRadius: 5,
+      elevation: 8,
+    },
+
+    bubbleWrapper: {
+      position: 'absolute',
+      top: -(BUBBLE_HEIGHT + 14),
+      alignItems: 'center',
+    },
+
+    bubble: {
+      backgroundColor: THEME.accent,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      width: 60,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+
+    bubbleText: {
+      color: isdark ? "#000" : "#111",
+      fontSize: 22,
+      fontWeight: '900',
+    },
+
+    bubbleTriangle: {
+      width: 0,
+      height: 0,
+      borderLeftWidth: 8,
+      borderRightWidth: 8,
+      borderTopWidth: 8,
+      borderLeftColor: 'transparent',
+      borderRightColor: 'transparent',
+      borderTopColor: THEME.accent,
+      marginTop: -1,
+    },
+
+    touchOverlay: {
+      position: 'absolute',
+      width: 120,
+      height: SLIDER_HEIGHT + THUMB_SIZE,
+      top: -THUMB_SIZE / 2,
+      zIndex: 20,
+    },
+
+    footer: {
+      alignItems: 'center',
+      gap: 20,
+    },
+
+    primaryButton: {
+      backgroundColor: THEME.accent,
+      width: '100%',
+      paddingVertical: 18,
+      borderRadius: 30,
+      alignItems: 'center',
+    },
+
+    primaryButtonText: {
+      color: isdark ? "#000" : "#111",
+      fontSize: 16,
+      fontWeight: '700',
+    },
+
+    dismissButton: {
+      paddingVertical: 10,
+    },
+
+    dismissButtonText: {
+      color: THEME.textSoft,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+  });
+}

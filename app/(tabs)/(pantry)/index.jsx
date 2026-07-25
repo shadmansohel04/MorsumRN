@@ -6,7 +6,8 @@ import {
   FlatList, 
   ActivityIndicator, 
   Dimensions,
-  RefreshControl
+  RefreshControl,
+  useColorScheme
 } from 'react-native';
 import Constants from "expo-constants";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,17 +18,7 @@ import { format } from '../../../constants/dateHelper';
 
 const backendURI = Constants.expoConfig.extra.backendURI;
 const { width } = Dimensions.get('window');
-
-const THEME = {
-  bg: '#0d0f0c',
-  accent: '#FF8762',
-  surface: '#1d201c',
-  surfaceElevated: '#141612',
-  tertiary: '#f7f3ed',
-  text: '#FFFFFF',
-  textSoft: '#E3E7DE',
-  success: '#4CAF50',
-};
+import {DARKTHEME, LIGHTTHEME} from "../../../constants/Colors"
 
 const RADII = {
   sm: 8,
@@ -51,6 +42,9 @@ export default function MyPantryScreen() {
   const [canPull, setCanPull] = useState(true);
   const [JOIN_DATE, set_JOIN_DATE] = useState(null);
   const [morsels, setMorsels] = useState(null);
+  const isdark = useColorScheme() === "dark";
+  const THEME = isdark ? DARKTHEME : LIGHTTHEME;
+  const styles = createStyles(THEME, isdark);
 
   const loadMoreMonths = async (isRefresh = false) => {
     if ((isLoading && !isRefresh) || (hasReachedEnd && !isRefresh)) return;
@@ -258,97 +252,101 @@ export default function MyPantryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.bg,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  heroSection: {
-    marginTop: 32,
-    alignItems: 'center',
-  },
-  heroJarContainer: {
-    width: 240,
-    height: 280,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: {
-    fontFamily: 'PlusJakartaSans-Bold',
-    fontWeight: '700',
-    fontSize: 22,
-    color: THEME.text,
-    marginTop: 24,
-  },
-  heroSub: {
-    fontFamily: 'Inter-ExtraBold',
-    fontWeight: '800',
-    fontSize: 11,
-    color: THEME.accent,
-    letterSpacing: 1.65,
-    marginTop: 8,
-    textTransform: 'uppercase'
-  },
-  heroDesc: {
-    fontFamily: 'BeVietnamPro-Regular',
-    fontWeight: '400',
-    fontSize: 14,
-    lineHeight: 20,
-    color: THEME.textSoft,
-    opacity: 0.7,
-    marginTop: 12,
-    textAlign: 'center',
-    paddingHorizontal: 48,
-  },
-  completedSectionHeader: {
-    marginTop: 48,
-    marginBottom: 20,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  sectionTitle: {
-    fontFamily: 'PlusJakartaSans-Bold',
-    fontWeight: '700',
-    fontSize: 18,
-    color: THEME.text,
-  },
-  rowWrapper: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  footerContainer: {
-    paddingBottom: 20,
-  },
-  statsCard: {
-    marginTop: 20,
-    marginHorizontal: 24,
-    backgroundColor: THEME.surfaceElevated,
-    borderRadius: RADII.md,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statsLabel: {
-    fontFamily: 'Inter-Bold',
-    fontWeight: '700',
-    fontSize: 10,
-    color: THEME.textSoft,
-    opacity: 0.5,
-    letterSpacing: 1.0,
-    textTransform: 'uppercase',
-  },
-  statsValue: {
-    fontFamily: 'PlusJakartaSans-ExtraBold',
-    fontWeight: '800',
-    fontSize: 28,
-    color: THEME.text,
-    marginTop: 4,
-  },
-});
+function createStyles(THEME){
+ return(
+    StyleSheet.create({
+      container: {
+        flex: 1,
+        backgroundColor: THEME.bg,
+      },
+      scrollContent: {
+        paddingBottom: 40,
+      },
+      heroSection: {
+        marginTop: 32,
+        alignItems: 'center',
+      },
+      heroJarContainer: {
+        width: 240,
+        height: 280,
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      heroTitle: {
+        fontFamily: 'PlusJakartaSans-Bold',
+        fontWeight: '700',
+        fontSize: 22,
+        color: THEME.text,
+        marginTop: 24,
+      },
+      heroSub: {
+        fontFamily: 'Inter-ExtraBold',
+        fontWeight: '800',
+        fontSize: 11,
+        color: THEME.accent,
+        letterSpacing: 1.65,
+        marginTop: 8,
+        textTransform: 'uppercase'
+      },
+      heroDesc: {
+        fontFamily: 'BeVietnamPro-Regular',
+        fontWeight: '400',
+        fontSize: 14,
+        lineHeight: 20,
+        color: THEME.textSoft,
+        opacity: 0.7,
+        marginTop: 12,
+        textAlign: 'center',
+        paddingHorizontal: 48,
+      },
+      completedSectionHeader: {
+        marginTop: 48,
+        marginBottom: 20,
+        paddingHorizontal: 24,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+      },
+      sectionTitle: {
+        fontFamily: 'PlusJakartaSans-Bold',
+        fontWeight: '700',
+        fontSize: 18,
+        color: THEME.text,
+      },
+      rowWrapper: {
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        marginBottom: 16,
+      },
+      footerContainer: {
+        paddingBottom: 20,
+      },
+      statsCard: {
+        marginTop: 20,
+        marginHorizontal: 24,
+        backgroundColor: THEME.surfaceElevated,
+        borderRadius: RADII.md,
+        padding: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      },
+      statsLabel: {
+        fontFamily: 'Inter-Bold',
+        fontWeight: '700',
+        fontSize: 10,
+        color: THEME.textSoft,
+        opacity: 0.5,
+        letterSpacing: 1.0,
+        textTransform: 'uppercase',
+      },
+      statsValue: {
+        fontFamily: 'PlusJakartaSans-ExtraBold',
+        fontWeight: '800',
+        fontSize: 28,
+        color: THEME.text,
+        marginTop: 4,
+      },
+    })
+ ) 
+}

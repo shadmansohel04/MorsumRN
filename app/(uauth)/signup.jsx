@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { theme } from "../../constants/Colors";
 import newLogo from "../../assets/images/newLogo.png";
 import Constants from "expo-constants";
+
 const backendURI = Constants.expoConfig.extra.backendURI;
 
 export default function SignUpScreen() {
@@ -30,11 +31,12 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
 
   const colorScheme = useColorScheme();
-  const colors = colorScheme === 'dark' ? theme.dark : theme.dark; // Inherited from your LoginScreen logic
+  const isdark = colorScheme === 'dark';
+  const THEME = isdark ? theme.dark : theme.light;
   const fonts = theme.font;
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
-  const styles = createStyles(colors, fonts, screenWidth);
+  const styles = createStyles(THEME, isdark, fonts, screenWidth);
 
   const isValidEmail = (v) => /\S+@\S+\.\S+/.test(v);
   
@@ -83,7 +85,7 @@ export default function SignUpScreen() {
 
   return(
     <KeyboardAvoidingView
-      style={{ flex: 1, width: '100%', backgroundColor: colors.background}}
+      style={styles.safeArea}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === "ios" ? 50 : 20}
     >
@@ -94,14 +96,14 @@ export default function SignUpScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{flexDirection: "row", height: 80, width: "65%", alignItems: "center", justifyContent: "center", marginBottom: 15}}>
-            <View style={{width: 35, height: 35, marginRight: 15}}>
-              <Image source={newLogo} style={{width: "100%", height: "100%"}}/>
+          <View style={styles.logoRow}>
+            <View style={styles.logoContainer}>
+              <Image source={newLogo} style={styles.logoImage}/>
             </View>
-            <Text style={{fontFamily: fonts.title, fontWeight: '900', fontSize: 58, color: colors.titleText}}>Morsum</Text>
+            <Text style={styles.morsumTitle}>Morsum</Text>
           </View>
-          <Text style={{marginBottom: 15, color: colors.boldText, fontWeight: '700', fontSize: 22, fontFamily: fonts.title}}>Join the table</Text>
-          <Text style={{textAlign: "center", width: 280, color: colors.subtleText, fontWeight: '400', fontSize: 17, fontFamily: fonts.subText}}>
+          <Text style={styles.subtitle}>Join the table</Text>
+          <Text style={styles.descriptionText}>
             Create an account to start sharing your daily morsels with those who matter.
           </Text>
           
@@ -110,7 +112,7 @@ export default function SignUpScreen() {
             <TextInput 
               style={styles.input} 
               placeholder='johnsmith' 
-              placeholderTextColor={"rgba(227, 231, 222, 0.3)"}
+              placeholderTextColor={isdark ? "rgba(227, 231, 222, 0.3)" : "rgba(0,0,0,0.3)"}
               value={username}
               onChangeText={setUserName}
               autoCapitalize="none"
@@ -120,7 +122,7 @@ export default function SignUpScreen() {
             <TextInput 
               style={styles.input} 
               placeholder='johnSmith@morsum.com' 
-              placeholderTextColor={"rgba(227, 231, 222, 0.3)"}
+              placeholderTextColor={isdark ? "rgba(227, 231, 222, 0.3)" : "rgba(0,0,0,0.3)"}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -131,7 +133,7 @@ export default function SignUpScreen() {
             <TextInput 
               style={styles.input} 
               placeholder='********' 
-              placeholderTextColor={"rgba(227, 231, 222, 0.3)"} 
+              placeholderTextColor={isdark ? "rgba(227, 231, 222, 0.3)" : "rgba(0,0,0,0.3)"} 
               secureTextEntry={true}
               value={password}
               onChangeText={setPassword}
@@ -145,7 +147,7 @@ export default function SignUpScreen() {
                 style={styles.gradientBackground}
               >
                 {loading ? (
-                  <ActivityIndicator color="#0d0f0c" />
+                  <ActivityIndicator color={isdark ? "#0d0f0c" : "#FFFFFF"} />
                 ) : (
                   <Text style={styles.buttonText}>Sign Up</Text>
                 )}
@@ -154,10 +156,10 @@ export default function SignUpScreen() {
             
             <Pressable
               onPress={()=>{router.back()}}
-              style={{marginTop: 15, alignItems: "center"}}
+              style={styles.loginPressable}
             >
-              <Text style={{ color: "#FF8762" }}>
-                <Text style={{ color: "#FFFFFF" }}>
+              <Text style={styles.loginTextAccent}>
+                <Text style={styles.loginTextNormal}>
                   Already have an account?{" "}
                 </Text>
                 Log in
@@ -170,15 +172,58 @@ export default function SignUpScreen() {
   )
 }
 
-function createStyles(colors, fonts, width) {
+function createStyles(THEME, isdark, fonts, width) {
   return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      width: '100%',
+      backgroundColor: THEME?.background || (isdark ? '#0d0f0c' : '#FFFFFF'),
+    },
     scrollContent: {
       alignItems: "center",
       flexGrow: 1,
       marginTop: 20,
       paddingBottom: 40
     },
-    inputContainer:{
+    logoRow: {
+      flexDirection: "row",
+      height: 80,
+      width: "65%",
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 15
+    },
+    logoContainer: {
+      width: 35,
+      height: 35,
+      marginRight: 15
+    },
+    logoImage: {
+      width: "100%",
+      height: "100%"
+    },
+    morsumTitle: {
+      fontFamily: fonts?.title,
+      fontWeight: '900',
+      fontSize: 58,
+      color: THEME?.titleText || (isdark ? '#FFFFFF' : '#1A1A1A')
+    },
+    subtitle: {
+      marginBottom: 15,
+      color: THEME?.boldText || (isdark ? '#FFFFFF' : '#1A1A1A'),
+      fontWeight: '700',
+      fontSize: 22,
+      fontFamily: fonts?.title
+    },
+    descriptionText: {
+      textAlign: "center",
+      width: 280,
+      color: THEME?.subtleText || (isdark ? '#E3E7DE' : '#666666'),
+      fontWeight: '400',
+      fontSize: 17,
+      fontFamily: fonts?.subText
+    },
+    inputContainer: {
       width: width - 68,
       marginTop: 40,
     },
@@ -186,17 +231,17 @@ function createStyles(colors, fonts, width) {
       width: "100%",
       fontFamily: fonts?.capLabel,
       fontSize: 12,
-      color: "#E3E7DE",
+      color: THEME?.subtleText || (isdark ? "#E3E7DE" : "#666666"),
       marginBottom: 8,
     },
-    input:{
+    input: {
       width: "100%",
       height: 56,
-      backgroundColor: "#1d201c",
+      backgroundColor: THEME?.surface || (isdark ? "#1d201c" : "#F5F5F5"),
       borderRadius: 12,
       fontFamily: fonts?.title,
       fontSize: 16,
-      color: "#E3E7DE",
+      color: THEME?.titleText || (isdark ? "#E3E7DE" : "#1A1A1A"),
       paddingHorizontal: 16,
       marginBottom: 20
     },
@@ -227,7 +272,17 @@ function createStyles(colors, fonts, width) {
       fontFamily: 'PlusJakartaSans-Bold', 
       fontSize: 18,
       fontWeight: '700',
-      color: '#0d0f0c',
+      color: isdark ? '#0d0f0c' : '#FFFFFF',
     },
-  })
+    loginPressable: {
+      marginTop: 15,
+      alignItems: "center"
+    },
+    loginTextAccent: {
+      color: THEME?.accent || "#FF8762"
+    },
+    loginTextNormal: {
+      color: THEME?.titleText || (isdark ? "#FFFFFF" : "#1A1A1A")
+    }
+  });
 }

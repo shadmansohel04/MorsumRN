@@ -14,8 +14,10 @@ import {
   TouchableOpacity,
   View,
   RefreshControl,
+  useColorScheme
 } from 'react-native';
 import { hoursFromNow } from '../../../constants/func';
+import { DARKTHEME, LIGHTTHEME } from "../../../constants/Colors";
 
 const backendURI = Constants.expoConfig.extra.backendURI;
 const { width } = Dimensions.get('window');
@@ -26,10 +28,18 @@ const DAYS_PER_LOAD = 14;
 
 const formatDateLabel = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
 };
 
 export default function MorsumProfile() {
+  const isdark = useColorScheme() === "dark";
+  const THEME = isdark ? DARKTHEME : LIGHTTHEME;
+  const styles = createStyles(THEME, isdark);
+
   const router = useRouter();
   const [calendarItems, setCalendarItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +129,8 @@ export default function MorsumProfile() {
           if (startData === null){
             setStart({
               total: rawJSON.totalSpotlight,
-              streak: rawJSON.totalStreak
+              streak: rawJSON.totalStreak,
+              friends: rawJSON.friendCount
             })
           }
           if (Object.keys(fetchedSpotlights).length === 0) {
@@ -143,7 +154,7 @@ export default function MorsumProfile() {
 
       for (let i = 0; i < DAYS_PER_LOAD; i++) {
         const targetDate = new Date(
-          Date.now() - (currentDaysOffset + i) * 86400000
+          (Date.now() + 86400000) - (currentDaysOffset + i) * 86400000
         );
         const dateKey = targetDate.toISOString().split("T")[0];
 
@@ -160,7 +171,6 @@ export default function MorsumProfile() {
 
           const temp = updatedSpotlights[dateKey][2];
           const timeago = hoursFromNow(temp.createdAt);
-
           postData = {
             meta: `${timeago} hours ago`,
             heroImage: temp.imgurl,
@@ -173,6 +183,7 @@ export default function MorsumProfile() {
             },
             badges: temp.badges,
             homemade: temp.homemade,
+            date: temp.date
           };
 
           delete updatedSpotlights[dateKey];
@@ -222,12 +233,12 @@ export default function MorsumProfile() {
           position: "absolute",
           right: 10,
           top: 10,
-          backgroundColor: "rgba(255, 135, 98, 0.8)",
+          backgroundColor: isdark ? "rgba(255, 135, 98, 0.8)" : "rgba(255, 135, 98, 0.9)",
           justifyContent: "center",
           alignItems: "center",
           borderRadius: 50
         }}>
-        <Text style={{fontSize: 10, fontWeight: "700"}}>Logout</Text>
+        <Text style={{fontSize: 10, fontWeight: "700", color: isdark ? "#FFF" : "#000"}}>Logout</Text>
       </Pressable>
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
@@ -243,7 +254,7 @@ export default function MorsumProfile() {
               /> : (
                 <View
                   style={{
-                    backgroundColor: "rgba(255, 135, 98, 0.5)",
+                    backgroundColor: isdark ? "rgba(255, 135, 98, 0.5)" : "rgba(255, 135, 98, 0.3)",
                     width: "100%",
                     height: "100%",
                     justifyContent: "center",
@@ -251,7 +262,7 @@ export default function MorsumProfile() {
                   }}
                 >
                   <Text
-                    style={{ color: "white", fontSize: 45 }}
+                    style={{ color: isdark ? "white" : "#1A1A1A", fontSize: 45 }}
                   >
                     {username ? username[0].toUpperCase() : ""}
                   </Text>
@@ -263,18 +274,27 @@ export default function MorsumProfile() {
 
         <Text style={styles.userName}>{username}</Text>
 
+        {/* --- NEW FRIENDS PART --- */}
+        <Pressable
+          onPress={()=>{router.push("friendPage")}}
+          style={styles.friendsContainer}
+        >
+          <MaterialIcons name="people-alt" size={16} color={THEME.textSoft || "#E3E7DE"} />
+          <Text style={styles.friendsText}>{startData?.friends} friends</Text>
+        </Pressable>
+
       </View>
 
       <View style={styles.statsSection}>
         <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: "#FF8762" }]}>{startData?.total}</Text>
+          <Text style={[styles.statNumber, { color: THEME.accent || "#FF8762" }]}>{startData?.total}</Text>
           <Text style={styles.statLabel}>TOTAL SPOTLIGHTS</Text>
         </View>
 
         <View style={styles.statCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[styles.statNumber, { color: "#a0d68c" }]}>{startData?.streak}</Text>
-            <MaterialIcons name="whatshot" size={24} color="#a0d68c" />
+            <Text style={[styles.statNumber, { color: THEME.success || "#a0d68c" }]}>{startData?.streak}</Text>
+            <MaterialIcons name="whatshot" size={24} color={THEME.success || "#a0d68c"} />
           </View>
           <Text style={styles.statLabel}>DAILY STREAK</Text>
         </View>
@@ -314,7 +334,7 @@ export default function MorsumProfile() {
       return (
         <View style={[styles.gridItem, styles.emptyGridItem]}>
           <Text style={styles.emptyDateText}>{item.displayDate}</Text>
-          <MaterialIcons name="photo-camera" size={24} color="#3a3d38" style={{ marginTop: 8 }} />
+          <MaterialIcons name="photo-camera" size={24} color={isdark ? "#3a3d38" : "#A0A0A0"} style={{ marginTop: 8 }} />
         </View>
       );
     }
@@ -337,13 +357,13 @@ export default function MorsumProfile() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#FF8762"
-            colors={["#FF8762"]}
+            tintColor={THEME.accent || "#FF8762"}
+            colors={[THEME.accent || "#FF8762"]}
           />
         }
         ListFooterComponent={
           isLoading && !hasReachedEnd && !refreshing ? (
-            <ActivityIndicator size="small" color="#FF8762" style={{ marginVertical: 20 }} />
+            <ActivityIndicator size="small" color={THEME.accent || "#FF8762"} style={{ marginVertical: 20 }} />
           ) : null
         }
       />
@@ -351,131 +371,149 @@ export default function MorsumProfile() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0d0f0c',
-  },
-  headerContainer: {
-    paddingBottom: 24,
-  },
-  profileHeader: {
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  avatarContainer: {
-    position: 'relative',
-    width: 120,
-    height: 120,
-  },
-  avatarBorder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#FF8762',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  innerPadding: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    overflow: 'hidden',
-  },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  userName: {
-    marginTop: 24,
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  statsSection: {
-    marginTop: 40,
-    flexDirection: 'row',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    width: COLUMN_WIDTH,
-    height: 100,
-    backgroundColor: '#141612',
-    borderRadius: 16,
-    padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 32,
-    fontWeight: '800'
-  },
-  statLabel: {
-    marginTop: 4,
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#E3E7DE',
-    opacity: 0.5,
-    letterSpacing: 1.1,
-  },
-  tab: {
-    flex: 1,
-    justifyContent: 'center',
-    borderRadius: 100,
-    alignItems: 'center',
-    backgroundColor: 'rgb(255, 135, 98)',
-    marginTop: 25,
-    marginHorizontal: HORIZONTAL_PADDING,
-    height: 48,
-  },
-  activeTabText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0d0f0c',
-  },
-  rowWrapper: {
-    justifyContent: 'space-between',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: GRID_SPACING,
-  },
-  gridItem: {
-    width: COLUMN_WIDTH,
-    height: COLUMN_WIDTH,
-    borderRadius: 16,
-    backgroundColor: '#1d201c',
-    overflow: 'hidden',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  dateOverlay: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  dateText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  emptyGridItem: {
-    borderWidth: 2,
-    borderColor: '#1d201c',
-    backgroundColor: 'transparent',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyDateText: {
-    color: '#3a3d38',
-    fontSize: 14,
-    fontWeight: '700',
-  }
-});
+function createStyles(THEME, isdark) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: THEME.bg || (isdark ? '#0d0f0c' : '#FFFFFF'),
+    },
+    headerContainer: {
+      paddingBottom: 24,
+    },
+    profileHeader: {
+      alignItems: 'center',
+      marginTop: 32,
+    },
+    avatarContainer: {
+      position: 'relative',
+      width: 120,
+      height: 120,
+    },
+    avatarBorder: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      borderWidth: 3,
+      borderColor: THEME.accent || '#FF8762',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    innerPadding: {
+      width: 110,
+      height: 110,
+      borderRadius: 55,
+      overflow: 'hidden',
+    },
+    profileImage: {
+      width: '100%',
+      height: '100%',
+    },
+    userName: {
+      marginTop: 24,
+      fontSize: 28,
+      fontWeight: '800',
+      color: THEME.text || (isdark ? '#FFFFFF' : '#1A1A1A'),
+    },
+    friendsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: THEME.surface || (isdark ? '#141612' : '#F5F5F5'), 
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      marginTop: 8,
+    },
+    friendsText: {
+      color: THEME.textSoft || (isdark ? '#E3E7DE' : '#666666'),
+      fontSize: 14,
+      fontWeight: '600',
+      marginLeft: 6,
+      opacity: 0.8,
+    },
+    statsSection: {
+      marginTop: 32,
+      flexDirection: 'row',
+      paddingHorizontal: HORIZONTAL_PADDING,
+      justifyContent: 'space-between',
+    },
+    statCard: {
+      width: COLUMN_WIDTH,
+      height: 100,
+      backgroundColor: THEME.surface || (isdark ? '#141612' : '#F5F5F5'),
+      borderRadius: 16,
+      padding: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    statNumber: {
+      fontSize: 32,
+      fontWeight: '800'
+    },
+    statLabel: {
+      marginTop: 4,
+      fontSize: 11,
+      fontWeight: '700',
+      color: THEME.textSoft || (isdark ? '#E3E7DE' : '#8E8E8E'),
+      opacity: 0.5,
+      letterSpacing: 1.1,
+    },
+    tab: {
+      flex: 1,
+      justifyContent: 'center',
+      borderRadius: 100,
+      alignItems: 'center',
+      backgroundColor: THEME.accent || 'rgb(255, 135, 98)',
+      marginTop: 25,
+      marginHorizontal: HORIZONTAL_PADDING,
+      height: 48,
+    },
+    activeTabText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: isdark ? '#0d0f0c' : '#FFFFFF',
+    },
+    rowWrapper: {
+      justifyContent: 'space-between',
+      paddingHorizontal: HORIZONTAL_PADDING,
+      marginBottom: GRID_SPACING,
+    },
+    gridItem: {
+      width: COLUMN_WIDTH,
+      height: COLUMN_WIDTH,
+      borderRadius: 16,
+      backgroundColor: THEME.surface || (isdark ? '#1d201c' : '#EAEAEA'),
+      overflow: 'hidden',
+    },
+    gridImage: {
+      width: '100%',
+      height: '100%',
+    },
+    dateOverlay: {
+      position: 'absolute',
+      bottom: 8,
+      left: 8,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    dateText: {
+      color: '#FFF',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    emptyGridItem: {
+      borderWidth: 2,
+      borderColor: isdark ? '#1d201c' : '#E0E0E0',
+      backgroundColor: 'transparent',
+      borderStyle: 'dashed',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyDateText: {
+      color: THEME.textSoft || (isdark ? '#3a3d38' : '#A0A0A0'),
+      fontSize: 14,
+      fontWeight: '700',
+    }
+  });
+}

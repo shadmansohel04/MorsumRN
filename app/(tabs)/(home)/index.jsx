@@ -4,7 +4,8 @@ import {
   Text,
   View,
   RefreshControl,
-  StatusBar
+  StatusBar,
+  useColorScheme
 } from "react-native";
 import TimerStack from "./(countdown)/timerComp";
 import PostCard from "./(post)/postCard";
@@ -13,16 +14,19 @@ import { useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
+import {DARKTHEME, LIGHTTHEME} from "../../../constants/Colors"
 
 const backendURI = Constants.expoConfig.extra.backendURI;
 
 export default function MorsumHomeFeed() {
   const { optional } = useLocalSearchParams();
-
   const [spotlight, setSpotlight] = useState({});
   const [friendData, setFriendData] = useState([]);
   const [flag, setFlag] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const isdark = useColorScheme() === "dark"
+  const THEME = isdark? DARKTHEME: LIGHTTHEME
+  const styles = createStyles(THEME)
 
   const refresh = async () => {
     try {
@@ -95,6 +99,7 @@ export default function MorsumHomeFeed() {
           time={spotlight.time}
           quantity={spotlight.quant}
           homemade={spotlight.homeMade}
+          date={spotlight.date}
         />
 
         {friendData.length > 0 ? (
@@ -113,29 +118,24 @@ export default function MorsumHomeFeed() {
   );
 }
 
-const THEME = {
-  bg: "#0d0f0c",
-  accent: "#FF8762",
-  surface: "#141612",
-  bottom: "#1d201c",
-  text: "#FFFFFF",
-  textSoft: "#E3E7DE",
-};
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: THEME.bg,
-  },
-  scrollContent: {
-    paddingBottom: 0,
-  },
-  yHeaderText: {
-    color: THEME.textSoft,
-    opacity: 0.5,
-    fontSize: 11,
-    fontWeight: "700",
-    fontFamily: "Inter-Bold",
-    letterSpacing: 11 * 0.15,
-  }
-});
+function createStyles(THEME){
+  return(
+    StyleSheet.create({
+      safe: {
+        flex: 1,
+        backgroundColor: THEME.bg,
+      },
+      scrollContent: {
+        paddingBottom: 0,
+      },
+      yHeaderText: {
+        color: THEME.textSoft,
+        opacity: 0.5,
+        fontSize: 11,
+        fontWeight: "700",
+        fontFamily: "Inter-Bold",
+        letterSpacing: 11 * 0.15,
+      }
+    })
+  )
+}
